@@ -1,8 +1,9 @@
 // 引入必要的模組
 const express = require('express');
 const mysql = require('mysql2/promise'); // 使用 Promise 版本方便異步操作
-const XLSX = require('xlsx');
-const fs = require('fs');
+// 移除 XLSX 和 fs 引用，因為它們在核心 API 邏輯中未使用
+// const XLSX = require('xlsx');
+// const fs = require('fs');
 const path = require('path');
 const app = express();
 
