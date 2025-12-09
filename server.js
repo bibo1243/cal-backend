@@ -25,7 +25,8 @@ async function connectToDatabase() {
             user: process.env.DB_USER,
             password: process.env.DB_PASS,
             database: process.env.DB_NAME,
-            port: process.env.MYSQL_PORT || 3306 // PORT 仍然可能需要從 MYSQL_PORT 或預設值獲取
+            port: process.env.MYSQL_PORT || 3306, // PORT 仍然可能需要從 MYSQL_PORT 或預設值獲取
+            charset: 'utf8mb4' // 🌟 修正 1: 強制使用 UTF8MB4 字符集
         };
         console.log("ℹ️ 偵測到手動設定的 DB_* 變數。");
         
@@ -37,7 +38,8 @@ async function connectToDatabase() {
             user: process.env.MYSQL_USER,
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DATABASE,
-            port: process.env.MYSQL_PORT || 3306
+            port: process.env.MYSQL_PORT || 3306,
+            charset: 'utf8mb4' // 🌟 修正 2: 強制使用 UTF8MB4 字符集
         };
         console.log("ℹ️ 偵測到 Zeabur 自動注入的 MYSQL_* 變數。");
         
@@ -62,6 +64,7 @@ async function connectToDatabase() {
         console.log('✅ MySQL 資料庫連線池建立成功！');
         
         // 檢查並創建表格
+        // 確保表格的 JSON 欄位能處理 UTF-8 字元
         await pool.query(`
             CREATE TABLE IF NOT EXISTS annual_plans (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -71,7 +74,7 @@ async function connectToDatabase() {
                 bg_images JSON,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_year (year)
-            );
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
         `);
         console.log('✅ 資料表 annual_plans 檢查/創建完成。');
         
