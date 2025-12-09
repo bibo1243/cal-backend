@@ -379,6 +379,8 @@
         <div class="page-toggle">
             <button class="page-btn active" data-page="planner">📋 目標規劃</button>
             <button class="page-btn" data-page="stats">📊 完成統計</button>
+            <!-- 新增清空資料按鈕 (方便測試和數據重置) -->
+            <button class="page-btn" data-action="clear-data" style="background: #e74c3c; color: white; border-color: #c0392b;">⚠️ 清空資料庫</button>
         </div>
 
         <div class="controls-wrapper">
@@ -582,8 +584,9 @@
                 const response = await fetch(`/api/plan/${currentYear}`);
                 
                 if (response.status === 404) {
-                    console.log(`ℹ️ ${currentYear} 年資料庫無紀錄，使用預設結構`);
-                    initDataStructure(currentYear); // 確保當前年份結構存在
+                    // 404可能是沒資料，也可能是舊亂碼數據解析失敗 (server.js已優化此邏輯)
+                    console.log(`ℹ️ ${currentYear} 年資料庫無紀錄或舊亂碼，使用預設結構`);
+                    initDataStructure(currentYear); 
                     return; 
                 }
                 
@@ -603,8 +606,7 @@
                 console.log(`✅ ${currentYear} 年資料載入成功。`);
                 
             } catch (err) {
-                console.warn('❌ 無法從後端載入數據 (可能 MySQL 未部署或連線失敗):', err.message);
-                // 如果載入失敗，我們確保使用空白的初始化結構
+                console.warn('❌ 無法從後端載入數據:', err.message);
                 initDataStructure(currentYear);
             }
         }
@@ -617,6 +619,9 @@
             
             // 更新主題
             document.body.className = getCurrentTheme();
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.theme-btn[data-theme="${getCurrentTheme()}"]`).classList.add('active');
+
             
             GRID_CONFIG.forEach(config => {
                 const item = document.createElement('div');
@@ -629,8 +634,8 @@
                 // 圖片上傳區塊 (需求 5)
                 const uploadZone = `
                     <div class="image-upload-zone">
-                        <button class="upload-btn" onclick="document.getElementById('imgUpload-${config.id}').click()">🖼️ 換圖</button>
-                        <button class="upload-btn" style="background: #e74c3c;" onclick="deleteBackgroundImage('${config.id}')">🗑️ 刪圖</button>
+                        <button class="upload-btn" data-action="upload-img" data-grid-id="${config.id}">🖼️ 換圖</button>
+                        <button class="upload-btn" style="background: #e74c3c;" data-action="delete-img" data-grid-id="${config.id}">🗑️ 刪圖</button>
                         <input type="file" id="imgUpload-${config.id}" data-grid-id="${config.id}" class="image-upload-input" accept="image/*" style="display: none;">
                     </div>
                 `;
@@ -674,20 +679,20 @@
         // --- 渲染核心詞區塊 (核心詞放大/繼承) ---
         function renderCoreGrid(contentDiv, config) {
             const yearData = getCurrentYearData();
-            const monthData = getCurrentMonthData();
             
             let coreWord = '';
             let inputLabel = '';
             let isReadOnly = false;
 
+            // 核心詞只需要從年度目標中獲取 (需求 13)
+            coreWord = yearData[config.id].coreWord || '';
+            
             if (currentMode === 'year') {
-                coreWord = yearData[config.id].coreWord || '';
                 inputLabel = coreWord ? '' : config.title; // 沒輸入才顯示「核心詞」標題
             } else {
-                // 月度目標核心詞繼承年度 (需求 13)
-                coreWord = yearData[config.id].coreWord || '';
+                // 月度模式：繼承年度核心詞且只讀 (需求 13)
                 inputLabel = coreWord ? '' : config.title;
-                isReadOnly = true; // 預設繼承，不可修改
+                isReadOnly = true; 
             }
             
             // 核心詞佔比 80% (需求 13)
@@ -807,12 +812,24 @@
                 };
             });
             
+            document.querySelectorAll('.page-toggle').forEach(p => p.addEventListener('click', (e) => {
+                if(e.target.dataset.action === 'clear-data') {
+                    handleClearData();
+                }
+            }));
+            
             document.querySelectorAll('.upload-btn').forEach(btn => {
-                if(btn.textContent.includes('換圖')) {
+                if(btn.dataset.action === 'upload-img') {
                      btn.onclick = (e) => {
                         const gridId = e.target.closest('.image-upload-zone').querySelector('.image-upload-input').dataset.gridId;
                         document.getElementById(`imgUpload-${gridId}`).click();
                      }
+                }
+                if(btn.dataset.action === 'delete-img') {
+                    btn.onclick = (e) => {
+                        const gridId = e.target.closest('.image-upload-zone').querySelector('.image-upload-input').dataset.gridId;
+                        deleteBackgroundImage(gridId);
+                    }
                 }
             });
 
@@ -875,6 +892,35 @@
             }
         }
         
+        // --- 清空資料處理 (新增的按鈕功能) ---
+        async function handleClearData() {
+            if (!confirm('⚠️ 警告：這將永久清除資料庫中所有年度的規劃數據！確定要繼續嗎？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/test/clear-data`, {
+                    method: 'DELETE',
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ 資料庫已清空。正在重新載入頁面...');
+                    // 清空本地數據結構
+                    allYearsData = {};
+                    // 重新載入頁面，會自動從空資料庫載入空白結構
+                    window.location.reload(); 
+                } else {
+                    alert(`❌ 清空失敗：${result.error || result.message}`);
+                    console.error(result);
+                }
+            } catch (error) {
+                alert('❌ 清空失敗：無法連線到伺服器 API。');
+                console.error(error);
+            }
+        }
+
+        
         function handleImageUpload(gridId, file) {
             if (!file || !file.type.startsWith('image/')) return;
             
@@ -899,6 +945,7 @@
         }
 
         function deleteBackgroundImage(gridId) {
+            if (!confirm('確定要刪除背景圖片嗎？')) return;
             const bgImages = getBackgroundImages();
 
             if (currentMode === 'year') {
