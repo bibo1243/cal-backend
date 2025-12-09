@@ -551,6 +551,7 @@
             return allYearsData[currentYear].backgroundImages;
         }
 
+        // 修改 saveData 函式，用於保存到後端
         function saveData() {
             // 將所有數據結構化後，通過 API 傳送到後端保存 (MySQL)
             const dataToSave = {
@@ -560,6 +561,7 @@
                 backgroundImages: getBackgroundImages()
             };
             
+            // 使用非同步操作，避免阻塞 UI
             fetch(`/api/plan/${currentYear}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -573,6 +575,7 @@
             .catch(err => console.error('API保存錯誤:', err));
         }
 
+        // --- 修正 loadData 函式，從後端載入資料 ---
         async function loadData() {
             // 優先從後端 API 載入資料
             try {
@@ -601,6 +604,7 @@
                 
             } catch (err) {
                 console.warn('❌ 無法從後端載入數據 (可能 MySQL 未部署或連線失敗):', err.message);
+                // 如果載入失敗，我們確保使用空白的初始化結構
                 initDataStructure(currentYear);
             }
         }
@@ -659,13 +663,12 @@
             }
 
             // 檢查是否為本地預設圖 (需求 15)
-            if (imageData && imageData.startsWith('LOCAL_')) {
-                const fileName = imageData.substring(6);
-                // 這裡假設本地圖檔在根目錄
-                return `./${fileName}`;
+            if (!imageData && LOCAL_IMAGE_MAP[gridId]) {
+                 // 如果沒有 Base64 數據，嘗試讀取本地檔案
+                 return `./${LOCAL_IMAGE_MAP[gridId]}`;
             }
 
-            return imageData; // 返回 Base64 數據
+            return imageData; // 返回 Base64 數據或 null
         }
         
         // --- 渲染核心詞區塊 (核心詞放大/繼承) ---
@@ -737,7 +740,7 @@
                 let linkInfo = '';
                 if (currentMode === 'month' && goal.yearGoalId) {
                     const yearGoal = getCurrentYearData()[config.id].goals.find(g => g.id === goal.yearGoalId);
-                    const linkText = yearGoal ? `${yearGoal.text.substring(0, 15)}...` : '（已刪除）';
+                    const linkText = yearGoal ? `${yearGoal.text.substring(0, 15)}${yearGoal.text.length > 15 ? '...' : ''}` : '（已刪除）';
                     linkInfo = `<div class="month-goal-link">
                         ↳ 關聯：<span data-action="change-link" data-index="${index}" title="點擊修改關聯">${linkText}</span>
                     </div>`;
@@ -804,6 +807,15 @@
                 };
             });
             
+            document.querySelectorAll('.upload-btn').forEach(btn => {
+                if(btn.textContent.includes('換圖')) {
+                     btn.onclick = (e) => {
+                        const gridId = e.target.closest('.image-upload-zone').querySelector('.image-upload-input').dataset.gridId;
+                        document.getElementById(`imgUpload-${gridId}`).click();
+                     }
+                }
+            });
+
             document.querySelectorAll('.add-btn').forEach(btn => {
                 btn.onclick = (e) => addGoal(e.target.dataset.id);
             });
@@ -1422,8 +1434,10 @@
             });
             document.querySelector(`.month-btn[data-month="${currentMonth}"]`).classList.add('active');
 
-            // 載入資料並渲染
+            // --- 修正: 在啟動時載入資料 ---
             await loadData();
+            
+            // 渲染介面
             renderGrid();
             updateStats();
             
