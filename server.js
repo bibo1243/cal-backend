@@ -106,6 +106,19 @@ app.get('/api/status', (req, res) => {
     res.send({ status: 'ok', message: 'Cal Planner Backend is running.', dbConnected: !!pool });
 });
 
+// --- 新增測試用 API：清空表格 ---
+app.delete('/api/test/clear-data', async (req, res) => {
+    if (!pool) return res.status(503).json({ error: '資料庫離線，無法執行清空' });
+    try {
+        await pool.query(`TRUNCATE TABLE annual_plans;`);
+        console.log('⚠️ 成功清空 annual_plans 表格所有資料。請重新整理網頁。');
+        return res.json({ success: true, message: '表格已清空，請重新整理網頁以載入空白狀態。' });
+    } catch (error) {
+        console.error('清空資料失敗:', error.message);
+        return res.status(500).json({ error: '執行 TRUNCATE 失敗。' });
+    }
+});
+
 // --- 輔助函式：安全解析 JSON ---
 // 處理資料庫讀取時，row.data 可能是字串或物件的情況
 function safeParseJson(data) {
@@ -113,7 +126,7 @@ function safeParseJson(data) {
         try {
             return JSON.parse(data);
         } catch (e) {
-            console.error('JSON.parse 錯誤:', e.message);
+            // console.error('JSON.parse 錯誤:', e.message); // 避免過多日誌
             return null;
         }
     }
@@ -141,7 +154,10 @@ app.get('/api/plan/:year', async (req, res) => {
             const parsedBgImages = safeParseJson(row.bg_images);
 
             if (!parsedData || !parsedBgImages) {
-                return res.status(500).json({ error: '資料庫返回的 JSON 數據格式錯誤，無法解析。' });
+                // 如果解析失敗，表示數據已損壞
+                console.error(`⚠️ 數據解析失敗，可能是舊的亂碼數據。年份: ${year}`);
+                // 這裡我們仍然返回 404，讓前端使用預設結構
+                return res.status(404).json({ message: `找到資料但解析失敗，可能為舊亂碼。` });
             }
 
             const responseData = {
@@ -208,7 +224,7 @@ app.get('/api/data', async (req, res) => {
             const parsedBgImages = safeParseJson(row.bg_images);
             
             if (!parsedData || !parsedBgImages) {
-                return res.status(500).json({ error: '資料庫返回的 JSON 數據格式錯誤，無法解析。' });
+                return res.status(404).send('自動載入失敗，可能為舊亂碼，建議清空資料。');
             }
 
             const responseData = {
