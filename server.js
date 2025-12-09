@@ -11,25 +11,44 @@ const PORT = process.env.PORT || 8080; // Zeabur 預設 Port 號通常是 8080
 const PUBLIC_DIR = path.join(__dirname); // 靜態檔案目錄 (目前是根目錄)
 
 // --- 資料庫連線設定 (Zeabur 自動注入) ---
-// Zeabur 會自動注入這些環境變數，請確保您已在 Zeabur 專案中部署 MySQL 服務
-const dbConfig = {
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE, // 直接使用 Zeabur 提供的 Database 名稱
-    port: process.env.MYSQL_PORT
-};
-
+// 修正連線邏輯，優先使用標準的 DATABASE_URL 或完整的個別變數。
 let pool;
 
 async function connectToDatabase() {
-    try {
-        if (!dbConfig.host || !dbConfig.user || !dbConfig.password || !dbConfig.database) {
-            console.error("❌ 警告：未找到完整的 MySQL 環境變數。請確認您已在 Zeabur 專案中部署 MySQL 服務並連接！");
-            console.error("❌ 服務將以離線模式啟動，無法永久儲存資料。");
-            return;
-        }
+    let dbConfig = {};
+    
+    // 優先檢查 DATABASE_URL 變數 (通常用於手動連結或標準連線字串)
+    if (process.env.DATABASE_URL) {
+        // 從標準 URL 解析設定
+        const url = new URL(process.env.DATABASE_URL);
+        dbConfig = {
+            host: url.hostname,
+            user: url.username,
+            password: url.password,
+            database: url.pathname.substring(1), // 移除斜線
+            port: url.port || 3306 // 預設 MySQL Port
+        };
+        console.log("ℹ️ 偵測到 DATABASE_URL，將使用標準連線字串。");
 
+    } else if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
+        // 檢查個別環境變數
+        dbConfig = {
+            host: process.env.MYSQL_HOST,
+            user: process.env.MYSQL_USER,
+            password: process.env.MYSQL_PASSWORD,
+            database: process.env.MYSQL_DATABASE,
+            port: process.env.MYSQL_PORT || 3306
+        };
+        console.log("ℹ️ 偵測到 MYSQL_HOST 等個別變數。");
+        
+    } else {
+        // 連線失敗警告
+        console.error("❌ 警告：未找到完整的 MySQL 連線變數 (DATABASE_URL 或 MYSQL_*)。");
+        console.error("❌ 服務將以離線模式啟動，無法永久儲存資料。");
+        return;
+    }
+
+    try {
         // 嘗試連線到資料庫
         pool = mysql.createPool(dbConfig);
         console.log('✅ MySQL 資料庫連線池建立成功！');
