@@ -49,6 +49,14 @@ async function connectToDatabase() {
     }
 
     try {
+        // 關鍵修正：確保 MySQL 驅動程式正確處理 JSON 類型欄位
+        dbConfig.typeCast = function (field, next) {
+            if (field.type === 'JSON') {
+                return field.string(); // 將 JSON 欄位強制轉換為字串，方便後續的 JSON.parse
+            }
+            return next();
+        };
+
         // 嘗試連線到資料庫
         pool = mysql.createPool(dbConfig);
         console.log('✅ MySQL 資料庫連線池建立成功！');
@@ -90,6 +98,22 @@ app.get('/api/status', (req, res) => {
     res.send({ status: 'ok', message: 'Cal Planner Backend is running.', dbConnected: !!pool });
 });
 
+// --- 輔助函式：安全解析 JSON ---
+// 處理資料庫讀取時，row.data 可能是字串或物件的情況
+function safeParseJson(data) {
+    if (typeof data === 'string') {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.error('JSON.parse 錯誤:', e.message);
+            return null;
+        }
+    }
+    // 如果它已經是物件，直接回傳
+    return data; 
+}
+
+
 // --- API 接口：資料 CRUD ---
 
 // GET: 載入指定年份的所有資料
@@ -104,9 +128,13 @@ app.get('/api/plan/:year', async (req, res) => {
         if (rows.length > 0) {
             const row = rows[0];
             
-            // 由於 JSON 欄位在 MySQL 中可能是字串，需要手動解析以確保傳輸正確
-            const parsedData = JSON.parse(row.data);
-            const parsedBgImages = JSON.parse(row.bg_images);
+            // 使用安全解析函式
+            const parsedData = safeParseJson(row.data);
+            const parsedBgImages = safeParseJson(row.bg_images);
+
+            if (!parsedData || !parsedBgImages) {
+                return res.status(500).json({ error: '資料庫返回的 JSON 數據格式錯誤，無法解析。' });
+            }
 
             const responseData = {
                 year: year,
@@ -168,8 +196,12 @@ app.get('/api/data', async (req, res) => {
         if (rows.length > 0) {
             const row = rows[0];
             
-            const parsedData = JSON.parse(row.data);
-            const parsedBgImages = JSON.parse(row.bg_images);
+            const parsedData = safeParseJson(row.data);
+            const parsedBgImages = safeParseJson(row.bg_images);
+            
+            if (!parsedData || !parsedBgImages) {
+                return res.status(500).json({ error: '資料庫返回的 JSON 數據格式錯誤，無法解析。' });
+            }
 
             const responseData = {
                 year: row.year,
