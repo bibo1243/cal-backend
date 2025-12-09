@@ -4,951 +4,419 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>九宮格年度規劃系統 - Cal Planner</title>
-    <!-- 導入 XLSX 庫，用於匯入/匯出 -->
+    <!-- 導入 XLSX 庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* CSS 變量定義：實現主題切換 */
+        /* CSS 變量定義：8種風格 */
         :root {
-            --bg-primary: #f5f8f5;
-            --bg-secondary: #ffffff;
-            --text-primary: #2d4a2b;
-            --text-secondary: #5a7658;
-            --accent: #6b9e78; /* 主色：竹青 */
-            --accent-light: #d8e8db;
-            --accent-dark: #4a7552;
-            --border: #d4e0d4;
-            --shadow: rgba(45, 74, 43, 0.08);
+            --bg-primary: #f5f8f5; --bg-secondary: #ffffff; --text-primary: #2d4a2b; --text-secondary: #5a7658;
+            --accent: #6b9e78; --accent-light: #d8e8db; --accent-dark: #4a7552;
+            --border: #d4e0d4; --shadow: rgba(45, 74, 43, 0.08);
             --center-bg: linear-gradient(135deg, rgba(107, 158, 120, 0.95) 0%, rgba(74, 117, 82, 0.95) 100%);
             --month-badge: #88b894;
-            --overlay: rgba(255, 255, 255, 0.92);
         }
         
-        /* 不同的風格（24節氣）主題 */
-        /* 為滿足系統字體要求，不指定 font-family */
-        body.bamboo { --bg-primary: #f5f8f5; --accent: #6b9e78; --center-bg: linear-gradient(135deg, rgba(107, 158, 120, 0.95) 0%, rgba(74, 117, 82, 0.95) 100%); }
-        body.sakura { --bg-primary: #fef8f9; --accent: #d98ba6; --center-bg: linear-gradient(135deg, rgba(217, 139, 166, 0.95) 0%, rgba(179, 109, 133, 0.95) 100%); }
-        body.lotus { --bg-primary: #f4f7fa; --accent: #6b9ac4; --center-bg: linear-gradient(135deg, rgba(107, 154, 196, 0.95) 0%, rgba(77, 122, 159, 0.95) 100%); }
-        body.sunset { --bg-primary: #fef9f5; --accent: #d98b5e; --center-bg: linear-gradient(135deg, rgba(217, 139, 94, 0.95) 0%, rgba(181, 109, 66, 0.95) 100%); }
-        /* 更多主題省略... */
-        
+        /* 1. 竹林青翠 (Bamboo) */
+        body.bamboo { --bg-primary: #f5f8f5; --accent: #6b9e78; --center-bg: linear-gradient(135deg, #6b9e78 0%, #4a7552 100%); }
+        /* 2. 櫻花粉雅 (Sakura) */
+        body.sakura { --bg-primary: #fff0f5; --text-primary: #5d4157; --accent: #ffb7c5; --accent-light: #ffe4e1; --accent-dark: #db7093; --center-bg: linear-gradient(135deg, #ffb7c5 0%, #db7093 100%); }
+        /* 3. 蓮池靜藍 (Lotus) */
+        body.lotus { --bg-primary: #f0f8ff; --text-primary: #2c3e50; --accent: #87ceeb; --accent-light: #e0ffff; --accent-dark: #4682b4; --center-bg: linear-gradient(135deg, #87ceeb 0%, #4682b4 100%); }
+        /* 4. 晚霞橙暖 (Sunset) */
+        body.sunset { --bg-primary: #fff5e6; --text-primary: #5d4037; --accent: #ffab91; --accent-light: #ffe0b2; --accent-dark: #d84315; --center-bg: linear-gradient(135deg, #ffab91 0%, #d84315 100%); }
+        /* 5. 深海湛藍 (Ocean) */
+        body.ocean { --bg-primary: #e3f2fd; --text-primary: #0d47a1; --accent: #2196f3; --accent-light: #bbdefb; --accent-dark: #1565c0; --center-bg: linear-gradient(135deg, #2196f3 0%, #1565c0 100%); }
+        /* 6. 薰衣草紫 (Lavender) */
+        body.lavender { --bg-primary: #f3e5f5; --text-primary: #4a148c; --accent: #ce93d8; --accent-light: #f3e5f5; --accent-dark: #8e24aa; --center-bg: linear-gradient(135deg, #ce93d8 0%, #8e24aa 100%); }
+        /* 7. 秋楓紅葉 (Autumn) */
+        body.autumn { --bg-primary: #fff3e0; --text-primary: #3e2723; --accent: #ffcc80; --accent-light: #ffe0b2; --accent-dark: #e65100; --center-bg: linear-gradient(135deg, #ffcc80 0%, #e65100 100%); }
+        /* 8. 暗夜極光 (Midnight) */
+        body.midnight { --bg-primary: #263238; --bg-secondary: #37474f; --text-primary: #eceff1; --text-secondary: #b0bec5; --accent: #80cbc4; --accent-light: #546e7a; --accent-dark: #009688; --border: #455a64; --shadow: rgba(0,0,0,0.3); --center-bg: linear-gradient(135deg, #263238 0%, #009688 100%); }
+
         body { 
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: var(--bg-primary); 
-            color: var(--text-primary); 
-            line-height: 1.6; 
-            min-height: 100vh; 
-            padding: 30px 20px; 
-            transition: all 0.6s ease; 
-            position: relative; 
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary); color: var(--text-primary); 
+            line-height: 1.6; min-height: 100vh; padding: 30px 20px; 
+            transition: all 0.5s ease; 
         }
         
-        /* 佈局和基本元素 */
-        .container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
-        header { text-align: center; margin-bottom: 40px; }
-        h1 { font-size: 2.8rem; font-weight: 500; margin-bottom: 15px; }
-        .subtitle { font-size: 1.1rem; color: var(--text-secondary); opacity: 0.8; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .subtitle { opacity: 0.8; }
         
-        /* 模式和主題選擇 */
-        .page-toggle, .controls-wrapper, .month-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
-        .page-btn, .mode-btn, .month-btn { padding: 10px 20px; border: 2px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; border-radius: 50px; transition: all 0.3s ease; box-shadow: 0 2px 8px var(--shadow); }
-        .page-btn.active, .mode-btn.active, .month-btn.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        .page-content { display: none; }
-        .page-content.active { display: block; }
+        /* 按鈕與控制區 */
+        .controls-wrapper { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        
+        .btn { padding: 8px 16px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; border-radius: 20px; transition: 0.2s; font-size: 0.9rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-danger { background: #e74c3c !important; color: white !important; border-color: #c0392b !important; }
+        .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
 
-        .theme-selector { display: flex; gap: 10px; padding: 8px 15px; background: var(--bg-secondary); border-radius: 50px; box-shadow: 0 4px 20px var(--shadow); }
-        .theme-btn { width: 35px; height: 35px; border: 3px solid transparent; border-radius: 50%; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: visible; box-shadow: 0 2px 8px var(--shadow); }
-        .theme-btn.active { transform: scale(1.2); border-color: var(--accent); }
-        
-        /* 九宮格佈局 */
-        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
+        /* 主題選擇器 - 色票圓點 */
+        .theme-selector { display: flex; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 30px; box-shadow: 0 2px 10px var(--shadow); align-items: center; }
+        .theme-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; position: relative; }
+        .theme-dot:hover { transform: scale(1.2); }
+        .theme-dot.active { border-color: var(--text-primary); transform: scale(1.1); }
+        .theme-dot::after { /* Tooltip */
+            content: attr(data-title); position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; font-size: 10px; border-radius: 4px;
+            white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .theme-dot:hover::after { opacity: 1; }
+
+        /* 九宮格 */
+        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
         .grid-item { 
-            background: var(--bg-secondary); 
-            border: 2px solid var(--border); 
-            border-radius: 16px; 
-            padding: 20px; 
-            min-height: 280px; 
-            position: relative; 
-            overflow: hidden; 
-            box-shadow: 0 4px 15px var(--shadow); 
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
+            background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 16px; 
+            padding: 20px; min-height: 350px; 
+            display: flex; flex-direction: column; /* 垂直排列 */
+            box-shadow: 0 4px 15px var(--shadow); transition: 0.3s;
         }
-        .grid-item:hover {
-            border-color: var(--accent);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
+        .grid-item:hover { border-color: var(--accent); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .grid-item.center { background: var(--center-bg); border: none; color: white; justify-content: center; align-items: center; }
 
-        /* 核心詞樣式 (需求 6, 13) */
-        .grid-item.center { 
-            background: var(--center-bg); 
-            color: white; 
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            border: none;
-        }
+        .grid-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; border-bottom: 2px solid var(--border); padding-bottom: 5px; }
+        .grid-item.center .grid-title { border: none; color: white; }
 
-        .core-word-wrapper {
-            width: 100%;
-            height: 80%; /* 佔大格子約80% */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .core-word-display {
-            font-size: 5vw; /* 字體放大到最滿版 */
-            font-weight: 900;
-            text-align: center;
-            line-height: 1;
-            padding: 5px;
-            text-shadow: 0 0 10px rgba(0,0,0,0.5), 0 0 20px var(--accent-light);
-            word-break: break-all;
-            max-width: 90%;
-            max-height: 90%;
-            overflow: hidden;
-        }
-        .core-input-label {
-            position: absolute;
-            top: 20px;
-            font-size: 1.2rem;
-            opacity: 0.8;
-            transition: opacity 0.3s ease;
-        }
+        /* 目標列表區域 (佔滿剩餘空間) */
+        .goals-list { flex: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px; max-height: 200px; }
         
-        /* 背景圖片顯示 (需求 5, 12, 15) */
-        .grid-bg-image { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            opacity: 0.2; /* 美觀，不要擋到文字 */
-            z-index: 0; 
-            filter: grayscale(50%) blur(1px); /* 創意美化 */
-            transition: all 0.4s ease;
-        }
-        .grid-item:hover .grid-bg-image {
-            opacity: 0.3;
-            filter: grayscale(0%) blur(0px);
-        }
-        .grid-content { position: relative; z-index: 2; flex: 1; }
-        
-        /* 圖片上傳按鈕 */
-        .image-upload-zone { position: absolute; top: 10px; right: 10px; z-index: 3; opacity: 0; transition: opacity 0.3s ease; }
-        .grid-item:hover .image-upload-zone { opacity: 1; }
-        .upload-btn { background: var(--accent); color: white; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-bottom: 5px; }
-
-        /* 格子標題 */
-        .grid-title { 
-            font-size: 1.2rem; 
-            font-weight: 700; 
-            margin-bottom: 15px; 
-            border-bottom: 2px solid var(--border); 
-            padding-bottom: 8px; 
-            color: var(--text-primary);
-            position: sticky;
-            top: 0;
-            background: var(--bg-secondary);
-            z-index: 10;
-        }
-        .grid-item.center .grid-title { color: white; border: none; }
-        
-        /* 目標列表 */
-        .goals-list { list-style: none; padding: 0; margin-top: 10px; flex: 1; overflow-y: auto; max-height: 200px; }
-        .goals-list::-webkit-scrollbar { width: 5px; }
-        .goals-list::-webkit-scrollbar-thumb { background: var(--accent-light); border-radius: 3px; }
-
-        .goal-item { 
-            display: flex; 
-            align-items: flex-start; 
-            gap: 8px; 
-            padding: 8px 0;
-            border-bottom: 1px dashed var(--border);
-            cursor: grab;
-            transition: background-color 0.2s ease;
-        }
+        .goal-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); align-items: flex-start; }
         .goal-item:last-child { border-bottom: none; }
-        .goal-item.dragging { opacity: 0.5; }
-        .goal-item.drag-over-bottom { border-bottom: 3px solid var(--accent-dark); padding-bottom: 5px; }
-        .goal-item.drag-over-top { border-top: 3px solid var(--accent-dark); padding-top: 5px; }
+        .goal-number { min-width: 20px; height: 20px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-top: 3px; }
+        .goal-text { flex: 1; word-break: break-word; cursor: pointer; }
+        .goal-checkbox { width: 16px; height: 16px; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; margin-top: 4px; }
+        .goal-checkbox.checked { background: var(--accent); }
         
-        .goal-number { 
-            min-width: 20px; 
-            height: 20px; 
-            background: var(--accent); 
-            color: white; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 0.75rem; 
-            font-weight: 600; 
-        }
+        /* 底部操作區 (輸入框 + 圖片) */
+        .grid-footer { margin-top: auto; }
+        
+        .add-input-wrapper { display: flex; gap: 5px; margin-bottom: 10px; }
+        .add-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); }
+        .add-btn { padding: 8px 12px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; }
 
-        /* 跳動青蛙符號 (需求 18) */
-        @keyframes frog-hop {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+        /* 圖片顯示區 - 移至最下方 */
+        .image-display-area { 
+            width: 100%; min-height: 50px; 
+            border: 2px dashed var(--border); border-radius: 8px; 
+            display: flex; align-items: center; justify-content: center; 
+            overflow: hidden; position: relative; margin-top: 5px;
+            background: rgba(0,0,0,0.02);
         }
-        .goal-frog-mark {
-            display: inline-block;
-            animation: frog-hop 0.8s ease-in-out infinite;
-            margin-right: 5px;
-            font-size: 1em;
-            cursor: pointer;
-        }
+        .image-display-area img { width: 100%; height: auto; display: block; object-fit: cover; }
+        .image-placeholder { color: var(--text-secondary); font-size: 0.8rem; pointer-events: none; }
         
-        .goal-text-wrapper {
-            flex: 1;
-            line-height: 1.4;
-            display: flex;
-            flex-direction: column;
-            word-break: break-word;
+        /* 圖片控制按鈕 (懸浮在圖片區上方) */
+        .img-controls { 
+            position: absolute; bottom: 5px; right: 5px; display: flex; gap: 5px; opacity: 0; transition: 0.3s; 
         }
+        .image-display-area:hover .img-controls { opacity: 1; }
+        .mini-btn { padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; color: white; }
         
-        .goal-text { 
-            font-size: 0.95rem; 
-            font-weight: 500; 
-            cursor: pointer; 
-        }
-        
-        .goal-text-input { 
-            width: 100%; 
-            padding: 4px; 
-            border: 1px solid var(--accent); 
-            border-radius: 4px; 
-            font-size: 0.95rem; 
-            font-family: inherit;
-            display: none;
-        }
-        
-        .goal-item.editing .goal-text { display: none; }
-        .goal-item.editing .goal-text-input { display: block; }
-        
-        .goal-checkbox { 
-            min-width: 18px; 
-            height: 18px; 
-            border: 2px solid var(--accent); 
-            border-radius: 4px; 
-            cursor: pointer; 
-            margin-top: 2px;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-        .goal-checkbox.checked { 
-            background: var(--accent); 
-            border-color: var(--accent);
-        }
-        .goal-checkbox.checked::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .goal-actions { opacity: 0; transition: opacity 0.3s ease; margin-left: auto; display: flex; gap: 4px;}
-        .goal-item:hover .goal-actions { opacity: 1; }
-        .action-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 14px; padding: 2px; }
-        .action-btn:hover { color: var(--accent); transform: scale(1.1); }
-        
-        .add-input-wrapper { display: flex; gap: 10px; margin-top: 15px; }
-        .add-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; }
-        .add-btn { padding: 8px 15px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; }
-        
-        /* 月度目標關聯顯示 */
-        .month-goal-link {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            opacity: 0.7;
-            margin-top: 2px;
-            word-break: break-word;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .month-goal-link span { cursor: pointer; }
-        .month-goal-link span:hover { color: var(--accent); text-decoration: underline; }
+        /* 核心詞大字 */
+        .core-word-display { font-size: 4rem; font-weight: bold; background: transparent; border: 2px solid rgba(255,255,255,0.3); color: white; text-align: center; width: 100%; max-width: 200px; padding: 10px; }
 
-        /* 年度目標下的月度目標清單 */
-        .linked-month-goals {
-            margin-top: 5px;
-            padding-left: 20px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            max-height: 100px;
-            overflow-y: auto;
-            border-top: 1px dashed var(--border);
-            padding-top: 5px;
-        }
-        .linked-month-goals div {
-            padding: 2px 0;
-        }
-        .linked-month-goals span {
-            background: var(--month-badge);
-            color: white;
-            padding: 1px 5px;
-            border-radius: 5px;
-            font-size: 0.7rem;
-            margin-right: 5px;
-        }
-
-        /* 年度目標/前月目標參考浮窗 (需求 3) */
-        .reference-tooltip { 
-            position: fixed; 
-            background: rgba(255, 255, 255, 0.95); 
-            border: 1px solid var(--accent); 
-            border-radius: 10px; 
-            padding: 15px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
-            z-index: 1000; 
-            display: none; 
-            max-width: 300px; 
-            max-height: 400px; 
-            overflow-y: auto;
-            backdrop-filter: blur(5px);
-        }
-        .reference-tooltip.show { display: block; }
-        .reference-tooltip h4 { color: var(--accent); font-size: 1rem; margin-bottom: 10px; }
-        .reference-goal-item { margin-bottom: 5px; font-size: 0.9rem; line-height: 1.3; color: var(--text-primary); }
-
-        /* 月度目標關聯選擇器 */
-        .link-selector-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5); z-index: 2000; display: none;
-            justify-content: center; align-items: center;
-        }
-        .link-selector-content {
-            background: var(--bg-secondary); padding: 30px; border-radius: 15px;
-            width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .link-selector-content h3 { color: var(--accent); margin-bottom: 20px; }
-        .year-goal-option {
-            padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .year-goal-option:hover { background: var(--accent-light); }
-        .year-goal-option:last-child { border-bottom: none; }
-        .year-goal-option input[type="radio"] { margin-right: 10px; }
-
-        /* 統計頁面 (需求 8, 10) */
-        .stats-container { max-width: 900px; margin: 0 auto; }
-        .progress-bar-bg { width: 100%; height: 25px; background: var(--border); border-radius: 12px; overflow: hidden; margin-top: 10px; }
-        .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 12px; transition: width 1s ease-out; display: flex; justify-content: flex-end; align-items: center; padding-right: 10px; color: white; font-weight: bold; }
-        .progress-info { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 600; }
-        .progress-value { color: var(--accent); }
-        .encouragement-box { 
-            margin-top: 30px; padding: 20px; 
-            border: 3px solid var(--accent); 
-            border-radius: 15px; 
-            background: var(--accent-light);
-            text-align: center;
-        }
-        .encouragement-box p { font-size: 1.1rem; color: var(--accent-dark); line-height: 1.8; }
-        
-        /* 煙花效果 (需求 7) */
-        #fireworks { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
-
-        @media (max-width: 1024px) { 
-            .grid-container { grid-template-columns: repeat(2, 1fr); } 
-            .core-word-display { font-size: 8vw; }
-        }
-        @media (max-width: 640px) { 
-            .grid-container { grid-template-columns: 1fr; } 
-            .core-word-display { font-size: 15vw; }
-        }
+        /* 響應式 */
+        @media (max-width: 900px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body class="bamboo">
-    <!-- 煙花 Canvas -->
-    <canvas id="fireworks"></canvas>
-    
     <div class="container">
         <header>
             <h1>九宮格年度規劃</h1>
-            <p class="subtitle">目標專注 · 行動高效</p>
+            <div class="controls-wrapper">
+                <button class="btn active" onclick="switchPage('planner')">📋 規劃</button>
+                <button class="btn" onclick="switchPage('stats')">📊 統計</button>
+                
+                <select id="yearSelect" class="btn" style="padding: 8px;"></select>
+                
+                <div class="theme-selector">
+                    <div class="theme-dot" style="background:#6b9e78" data-theme="bamboo" data-title="竹林"></div>
+                    <div class="theme-dot" style="background:#ffb7c5" data-theme="sakura" data-title="櫻花"></div>
+                    <div class="theme-dot" style="background:#87ceeb" data-theme="lotus" data-title="蓮池"></div>
+                    <div class="theme-dot" style="background:#ffab91" data-theme="sunset" data-title="晚霞"></div>
+                    <div class="theme-dot" style="background:#2196f3" data-theme="ocean" data-title="深海"></div>
+                    <div class="theme-dot" style="background:#ce93d8" data-theme="lavender" data-title="薰衣草"></div>
+                    <div class="theme-dot" style="background:#ffcc80" data-theme="autumn" data-title="秋楓"></div>
+                    <div class="theme-dot" style="background:#263238" data-theme="midnight" data-title="暗夜"></div>
+                </div>
+            </div>
+            
+            <div class="controls-wrapper">
+                <button class="btn btn-primary" onclick="handleBackup()">📥 備份資料庫</button>
+                <button class="btn btn-primary" onclick="document.getElementById('restoreInput').click()">📤 還原資料庫</button>
+                <input type="file" id="restoreInput" accept=".json" style="display:none" onchange="handleRestore(this)">
+                <button class="btn btn-danger" onclick="handleClearData()">⚠️ 清空資料</button>
+            </div>
         </header>
 
-        <div class="page-toggle">
-            <button class="page-btn active" data-page="planner">📋 目標規劃</button>
-            <button class="page-btn" data-page="stats">📊 完成統計</button>
-            <!-- 新增清空資料按鈕 (方便測試和數據重置) -->
-            <button class="page-btn" data-action="clear-data" style="background: #e74c3c; color: white; border-color: #c0392b;">⚠️ 清空資料庫</button>
-        </div>
-
-        <div class="controls-wrapper">
-            <!-- 年份選擇 (需求 9) -->
-            <div class="year-selector">
-                <label for="yearSelect">年份：</label>
-                <select id="yearSelect"></select>
+        <div id="plannerPage">
+            <div class="controls-wrapper">
+                <button class="btn active mode-btn" data-mode="year" onclick="switchMode('year')">📅 年度</button>
+                <button class="btn mode-btn" data-mode="month" onclick="switchMode('month')">📆 月度</button>
             </div>
-            
-            <!-- 模式切換 -->
-            <div class="mode-toggle">
-                <button class="mode-btn active" data-mode="year"><span>📅 年度計劃</span></button>
-                <button class="mode-btn" data-mode="month"><span>📆 月度計劃</span></button>
+            <div id="monthSelector" class="controls-wrapper" style="display:none;">
+                <!-- JS 生成月份按鈕 -->
             </div>
-            
-            <!-- 主題風格選擇 (需求 3) -->
-            <div class="theme-selector">
-                <button class="theme-btn bamboo active" data-theme="bamboo" title="竹林青翠"></button>
-                <button class="theme-btn sakura" data-theme="sakura" title="櫻花粉雅"></button>
-                <button class="theme-btn lotus" data-theme="lotus" title="蓮池靜藍"></button>
-                <button class="theme-btn sunset" data-theme="sunset" title="晚霞橙暖"></button>
-            </div>
+            <div id="gridContainer" class="grid-container"></div>
         </div>
 
-        <!-- 月份選擇 (需求 4.1) -->
-        <div class="month-selector" id="monthSelector">
-            <button class="month-btn active" data-month="1">1月</button>
-            <button class="month-btn" data-month="2">2月</button>
-            <button class="month-btn" data-month="3">3月</button>
-            <button class="month-btn" data-month="4">4月</button>
-            <button class="month-btn" data-month="5">5月</button>
-            <button class="month-btn" data-month="6">6月</button>
-            <button class="month-btn" data-month="7">7月</button>
-            <button class="month-btn" data-month="8">8月</button>
-            <button class="month-btn" data-month="9">9月</button>
-            <button class="month-btn" data-month="10">10月</button>
-            <button class="month-btn" data-month="11">11月</button>
-            <button class="month-btn" data-month="12">12月</button>
-        </div>
-
-        <!-- 規劃九宮格主體 -->
-        <div id="plannerPage" class="page-content active">
-            <div class="grid-container" id="gridContainer"></div>
-        </div>
-
-        <!-- 統計頁面 -->
-        <div id="statsPage" class="page-content">
-            <div class="stats-container">
-                <div class="progress-info">
-                    <h2>年度目標完成度</h2>
-                    <span class="progress-value" id="yearCompletionPercent">0%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" id="yearProgressBar" style="width: 0%"></div>
-                </div>
-                <p style="margin-top: 10px;">總目標：<span id="yearTotal">0</span> 個, 已完成：<span id="yearCompleted">0</span> 個</p>
-
-                <div class="progress-info" style="margin-top: 30px;">
-                    <h2>全年月度目標完成度</h2>
-                    <span class="progress-value" id="allMonthCompletionPercent">0%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" id="allMonthProgressBar" style="width: 0%"></div>
-                </div>
-                <p style="margin-top: 10px;">總目標：<span id="allMonthTotal">0</span> 個, 已完成：<span id="allMonthCompleted">0</span> 個</p>
-
-                <!-- 勉勵的話 (需求 10) -->
-                <div class="encouragement-box" id="encouragementBox">
-                    <p id="encouragementText">設定目標，就是邁向成功的第一步！</p>
-                </div>
+        <div id="statsPage" style="display:none;">
+            <!-- 統計內容由 JS 動態生成 -->
+            <div class="grid-item" style="width: 100%; text-align: center;">
+                <h2>完成進度</h2>
+                <div id="statsContent"></div>
             </div>
         </div>
     </div>
-
-    <!-- 關聯目標選擇器 Modal (需求 4.3, 14) -->
-    <div id="linkSelectorModal" class="link-selector-modal">
-        <div class="link-selector-content">
-            <h3 id="linkSelectorTitle">關聯年度目標</h3>
-            <div id="yearGoalOptions" class="year-goal-options">
-                <!-- 選項會透過 JS 渲染 -->
-            </div>
-            <div style="text-align: right; margin-top: 20px;">
-                <button onclick="hideLinkSelectorModal()" class="action-btn" style="color: var(--accent);">取消</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 年度目標/前月目標參考浮窗 (需求 3, 4.2) -->
-    <div id="referenceTooltip" class="reference-tooltip"></div>
 
     <script>
-        // --- 設定與狀態變數 ---
         const GRID_CONFIG = [
-            { id: 'learn', title: '學習&成長', position: 0 },
-            { id: 'experience', title: '體驗&突破', position: 1 },
-            { id: 'relax', title: '休閒&放松', position: 2 },
-            { id: 'family', title: '家庭&生活', position: 3 },
-            { id: 'core', title: '核心詞', position: 4, isCenter: true },
-            { id: 'work', title: '工作&事業', position: 5 },
-            { id: 'social', title: '人際&社群', position: 6 },
-            { id: 'finance', title: '財務&理財', position: 7 },
-            { id: 'health', title: '健康&身體', position: 8 }
+            { id: 'learn', title: '學習&成長' }, { id: 'experience', title: '體驗&突破' }, { id: 'relax', title: '休閒&放鬆' },
+            { id: 'family', title: '家庭&生活' }, { id: 'core', title: '核心詞', isCenter: true }, { id: 'work', title: '工作&事業' },
+            { id: 'social', title: '人際&社群' }, { id: 'finance', title: '財務&理財' }, { id: 'health', title: '健康&身體' }
         ];
 
-        // 預設圖片映射 (需求 15)
-        const LOCAL_IMAGE_MAP = {
-            'learn': '1.jpg', 'experience': '2.jpg', 'relax': '3.jpg',
-            'family': '4.jpg', 'core': '5.jpg', 'work': '6.jpg',
-            'social': '7.jpg', 'finance': '8.jpg', 'health': '9.jpg'
-        };
-
-        let currentMode = 'year'; // 'year' 或 'month'
-        let currentMonth = new Date().getMonth() + 1; // 當前月份 1-12
+        let currentMode = 'year';
+        let currentMonth = new Date().getMonth() + 1;
         let currentYear = new Date().getFullYear();
         let currentTheme = 'bamboo';
-        
-        // 核心資料結構: 儲存所有年份的年度/月度/圖片資料
         let allYearsData = {}; 
 
-        // 拖曳狀態
-        let draggedElement = null;
-        
-        // --- 初始化函式 ---
+        // 初始化
+        async function initApp() {
+            initYearSelector();
+            initMonthSelector();
+            setupThemeListeners();
+            await loadData();
+            renderGrid();
+        }
 
+        // 年份選擇器 (至2100年)
+        function initYearSelector() {
+            const select = document.getElementById('yearSelect');
+            const startYear = 2020;
+            const endYear = 2100;
+            for (let y = startYear; y <= endYear; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = `${y}年`;
+                if (y === currentYear) opt.selected = true;
+                select.appendChild(opt);
+            }
+            select.onchange = async (e) => {
+                currentYear = parseInt(e.target.value);
+                await loadData();
+                renderGrid();
+            };
+        }
+
+        function initMonthSelector() {
+            const container = document.getElementById('monthSelector');
+            for(let i=1; i<=12; i++) {
+                const btn = document.createElement('button');
+                btn.className = `btn ${i === currentMonth ? 'active' : ''}`;
+                btn.textContent = `${i}月`;
+                btn.onclick = () => {
+                    currentMonth = i;
+                    document.querySelectorAll('#monthSelector .btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderGrid();
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function setupThemeListeners() {
+            document.querySelectorAll('.theme-dot').forEach(dot => {
+                dot.onclick = () => {
+                    const theme = dot.dataset.theme;
+                    currentTheme = theme;
+                    document.body.className = theme;
+                    if(allYearsData[currentYear]) {
+                        allYearsData[currentYear].theme = theme;
+                        saveData();
+                    }
+                };
+            });
+        }
+
+        // 資料結構初始化
         function initDataStructure(year) {
             if (allYearsData[year]) return;
-
             const yearData = {};
             const monthData = {};
             const backgroundImages = { year: {}, month: {} };
-            
-            GRID_CONFIG.forEach(config => {
-                yearData[config.id] = {
-                    title: config.title,
-                    coreWord: config.isCenter ? '' : null,
-                    goals: []
-                };
+            GRID_CONFIG.forEach(c => {
+                yearData[c.id] = { title: c.title, coreWord: '', goals: [] };
             });
-
-            for (let month = 1; month <= 12; month++) {
-                monthData[month] = {};
-                GRID_CONFIG.forEach(config => {
-                    monthData[month][config.id] = {
-                        goals: [] // 月度目標
-                    };
-                    backgroundImages.month[month] = {};
-                });
+            for(let m=1; m<=12; m++) {
+                monthData[m] = {};
+                GRID_CONFIG.forEach(c => { monthData[m][c.id] = { goals: [] }; });
+                backgroundImages.month[m] = {};
             }
-            
             allYearsData[year] = { yearData, monthData, theme: 'bamboo', backgroundImages };
         }
-        
-        function getCurrentYearData() {
-            initDataStructure(currentYear);
-            return allYearsData[currentYear].yearData;
+
+        // 資料載入 (API)
+        async function loadData() {
+            try {
+                const res = await fetch(`/api/plan/${currentYear}`);
+                if (res.status === 404) {
+                    initDataStructure(currentYear);
+                } else {
+                    const data = await res.json();
+                    allYearsData[currentYear] = data;
+                    currentTheme = data.theme || 'bamboo';
+                    document.body.className = currentTheme;
+                }
+            } catch (e) {
+                console.error('載入失敗', e);
+                initDataStructure(currentYear);
+            }
         }
 
-        function getCurrentMonthData() {
-            initDataStructure(currentYear);
-            return allYearsData[currentYear].monthData;
-        }
-
-        function getCurrentTheme() {
-            initDataStructure(currentYear);
-            return allYearsData[currentYear].theme;
-        }
-        
-        function getBackgroundImages() {
-            initDataStructure(currentYear);
-            return allYearsData[currentYear].backgroundImages;
-        }
-
-        // 修改 saveData 函式，用於保存到後端
+        // 資料儲存 (API)
         function saveData() {
-            // 將所有數據結構化後，通過 API 傳送到後端保存 (MySQL)
-            const dataToSave = {
-                yearData: getCurrentYearData(),
-                monthData: getCurrentMonthData(),
-                theme: getCurrentTheme(),
-                backgroundImages: getBackgroundImages()
-            };
-            
-            // 使用非同步操作，避免阻塞 UI
+            const data = allYearsData[currentYear];
             fetch(`/api/plan/${currentYear}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSave)
-            })
-            .then(res => res.json())
-            .then(result => {
-                if (!result.success) console.error('資料保存失敗:', result.error);
-                else console.log(`💾 資料保存成功: ${result.message}`);
-            })
-            .catch(err => console.error('API保存錯誤:', err));
+                body: JSON.stringify(data)
+            }).catch(e => console.error('儲存失敗', e));
         }
 
-        // --- 修正 loadData 函式，從後端載入資料 ---
-        async function loadData() {
-            // 優先從後端 API 載入資料
-            try {
-                const response = await fetch(`/api/plan/${currentYear}`);
-                
-                if (response.status === 404) {
-                    // 404可能是沒資料，也可能是舊亂碼數據解析失敗 (server.js已優化此邏輯)
-                    console.log(`ℹ️ ${currentYear} 年資料庫無紀錄或舊亂碼，使用預設結構`);
-                    initDataStructure(currentYear); 
-                    return; 
-                }
-                
-                if (!response.ok) throw new Error(response.statusText);
-
-                const data = await response.json();
-                
-                // 載入資料並更新狀態
-                initDataStructure(currentYear);
-                allYearsData[currentYear] = {
-                    yearData: data.yearData,
-                    monthData: data.monthData,
-                    theme: data.theme || 'bamboo',
-                    backgroundImages: data.backgroundImages || { year: {}, month: {} }
-                };
-                
-                console.log(`✅ ${currentYear} 年資料載入成功。`);
-                
-            } catch (err) {
-                console.warn('❌ 無法從後端載入數據:', err.message);
-                initDataStructure(currentYear);
-            }
-        }
-        
-        // --- 渲染函式 ---
-
+        // 渲染主網格
         function renderGrid() {
             const container = document.getElementById('gridContainer');
             container.innerHTML = '';
             
-            // 更新主題
-            document.body.className = getCurrentTheme();
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.theme-btn[data-theme="${getCurrentTheme()}"]`).classList.add('active');
-
-            
             GRID_CONFIG.forEach(config => {
                 const item = document.createElement('div');
-                item.className = 'grid-item' + (config.isCenter ? ' center' : '');
-                item.dataset.gridId = config.id;
+                item.className = `grid-item ${config.isCenter ? 'center' : ''}`;
                 
-                const bgImage = getBackgroundImageURL(config.id);
-                const bgImageHtml = bgImage ? `<img src="${bgImage}" class="grid-bg-image" alt="背景">` : '';
-                
-                // 圖片上傳區塊 (需求 5)
-                const uploadZone = `
-                    <div class="image-upload-zone">
-                        <button class="upload-btn" data-action="upload-img" data-grid-id="${config.id}">🖼️ 換圖</button>
-                        <button class="upload-btn" style="background: #e74c3c;" data-action="delete-img" data-grid-id="${config.id}">🗑️ 刪圖</button>
-                        <input type="file" id="imgUpload-${config.id}" data-grid-id="${config.id}" class="image-upload-input" accept="image/*" style="display: none;">
-                    </div>
-                `;
-                
-                item.innerHTML = bgImageHtml + uploadZone + '<div class="grid-content"></div>';
-                
-                const contentDiv = item.querySelector('.grid-content');
-
                 if (config.isCenter) {
-                    renderCoreGrid(contentDiv, config);
+                    renderCenterCell(item, config);
                 } else {
-                    renderGoalGrid(contentDiv, config);
+                    renderNormalCell(item, config);
                 }
-
                 container.appendChild(item);
             });
-
-            setupGridItemListeners();
         }
 
-        function getBackgroundImageURL(gridId) {
-            const bgImages = getBackgroundImages();
-            let imageData = null;
-
-            if (currentMode === 'year') {
-                imageData = bgImages.year[gridId];
-            } else {
-                // 月度目標背景圖 (繼承/獨立修改)
-                imageData = bgImages.month[currentMonth][gridId] || bgImages.year[gridId];
-            }
-
-            // 檢查是否為本地預設圖 (需求 15)
-            if (!imageData && LOCAL_IMAGE_MAP[gridId]) {
-                 // 如果沒有 Base64 數據，嘗試讀取本地檔案
-                 return `./${LOCAL_IMAGE_MAP[gridId]}`;
-            }
-
-            return imageData; // 返回 Base64 數據或 null
-        }
-        
-        // --- 渲染核心詞區塊 (核心詞放大/繼承) ---
-        function renderCoreGrid(contentDiv, config) {
-            const yearData = getCurrentYearData();
+        function renderCenterCell(item, config) {
+            const data = allYearsData[currentYear].yearData[config.id];
+            const word = data.coreWord || '';
             
-            let coreWord = '';
-            let inputLabel = '';
-            let isReadOnly = false;
-
-            // 核心詞只需要從年度目標中獲取 (需求 13)
-            coreWord = yearData[config.id].coreWord || '';
-            
-            if (currentMode === 'year') {
-                inputLabel = coreWord ? '' : config.title; // 沒輸入才顯示「核心詞」標題
-            } else {
-                // 月度模式：繼承年度核心詞且只讀 (需求 13)
-                inputLabel = coreWord ? '' : config.title;
-                isReadOnly = true; 
-            }
-            
-            // 核心詞佔比 80% (需求 13)
-            contentDiv.innerHTML = `
-                ${inputLabel ? `<div class="core-input-label">${inputLabel}</div>` : ''}
-                <div class="core-word-wrapper">
-                    <input 
-                        type="text" 
-                        class="core-word-display" 
-                        placeholder="${config.title}"
-                        value="${coreWord}"
-                        data-id="${config.id}"
-                        maxlength="8"
-                        ${isReadOnly ? 'readonly' : ''}
-                        style="${isReadOnly ? 'cursor: default; background: none; border: none; color: white;' : 'background: rgba(255,255,255,0.1); border: 2px solid white; color: white;'}"
-                    />
-                </div>
-            `;
-            
-            // 只有年度核心詞可輸入 (即時更新所有月度核心詞)
-            if (currentMode === 'year') {
-                contentDiv.querySelector('.core-word-display').addEventListener('input', (e) => {
-                    yearData[config.id].coreWord = e.target.value.trim();
-                    saveData();
-                    // 重新渲染以更新核心詞的放大效果 (如果有需要)
-                    renderGrid(); 
-                });
-            }
-        }
-
-
-        // --- 渲染目標列表區塊 ---
-        function renderGoalGrid(contentDiv, config) {
-            const data = currentMode === 'year' ? getCurrentYearData() : getCurrentMonthData()[currentMonth];
-            const goals = data[config.id].goals;
-            
-            // 取得前一個月的目標作為參考 (需求 4.2)
-            const prevMonthGoals = (currentMode === 'month' && currentMonth > 1) ? getCurrentMonthData()[currentMonth - 1][config.id].goals : [];
-
-            // 月度目標才需要顯示上個月目標
-            const prevGoalsHtml = prevMonthGoals.length > 0 && currentMode === 'month'
-                ? `<div style="margin-bottom: 15px; padding: 10px; background: var(--accent-light); border-radius: 8px; font-size: 0.85rem; color: var(--text-dark);">
-                    <strong>${currentMonth - 1}月目標 (${config.title}):</strong>
-                    ${prevMonthGoals.map((g, i) => `<div>${i + 1}. ${g.text} ${g.completed ? '(已完成)' : ''}</div>`).join('')}
-                </div>`
-                : '';
-
-
-            const goalsHtml = goals.map((goal, index) => {
-                let linkInfo = '';
-                if (currentMode === 'month' && goal.yearGoalId) {
-                    const yearGoal = getCurrentYearData()[config.id].goals.find(g => g.id === goal.yearGoalId);
-                    const linkText = yearGoal ? `${yearGoal.text.substring(0, 15)}${yearGoal.text.length > 15 ? '...' : ''}` : '（已刪除）';
-                    linkInfo = `<div class="month-goal-link">
-                        ↳ 關聯：<span data-action="change-link" data-index="${index}" title="點擊修改關聯">${linkText}</span>
-                    </div>`;
-                } else if (currentMode === 'year' && goal.monthGoals && goal.monthGoals.length > 0) {
-                    // 年度目標下顯示月度目標 (文字縮小)
-                    linkInfo = `<div class="linked-month-goals" title="已關聯的月度目標">
-                        ${goal.monthGoals.map(mg => `<div><span>${mg.month}月</span>${mg.text}</div>`).join('')}
-                    </div>`;
-                }
-
-                const frogMark = goal.hasFrog ? `<span class="goal-frog-mark" data-action="toggle-frog" data-index="${index}">🐸</span>` : '';
-                
-                return `
-                    <li class="goal-item ${goal.completed ? 'completed' : ''}" 
-                        draggable="true" 
-                        data-index="${index}" 
-                        data-grid-id="${config.id}"
-                    >
-                        <div class="goal-number">${index + 1}</div>
-                        
-                        <div class="goal-checkbox ${goal.completed ? 'checked' : ''}" data-action="toggle-check" data-index="${index}"></div>
-                        
-                        <div class="goal-text-wrapper">
-                            <span class="goal-text" data-action="edit" data-index="${index}">${frogMark}${goal.text}</span>
-                            <input type="text" class="goal-text-input" value="${goal.text}" data-index="${index}">
-                            ${linkInfo}
-                        </div>
-                        
-                        <div class="goal-actions">
-                            <button class="action-btn" data-action="edit" data-index="${index}" title="修改文字">✏️</button>
-                            ${currentMode === 'month' ? `<button class="action-btn" data-action="change-link-btn" data-index="${index}" title="修改年度關聯">🔗</button>` : ''}
-                            <button class="action-btn ${goal.hasFrog ? 'active' : ''}" data-action="toggle-frog" data-index="${index}" title="標註青蛙">🐸</button>
-                            <button class="action-btn" data-action="delete" data-index="${index}" title="刪除目標">❌</button>
-                        </div>
-                    </li>
-                `;
-            }).join('');
-
-            contentDiv.innerHTML = `
+            item.innerHTML = `
                 <div class="grid-title">${config.title}</div>
-                ${prevGoalsHtml}
-                <ul class="goals-list" data-id="${config.id}">${goalsHtml}</ul>
-                <div class="add-input-wrapper">
-                    <input 
-                        type="text" 
-                        class="add-input" 
-                        placeholder="新增目標..."
-                        data-id="${config.id}"
-                    >
-                    <button class="add-btn" data-action="add" data-id="${config.id}">新增</button>
+                <input type="text" class="core-word-display" value="${word}" 
+                    oninput="updateCoreWord(this.value)" placeholder="核心詞">
+            `;
+        }
+
+        function updateCoreWord(val) {
+            allYearsData[currentYear].yearData['core'].coreWord = val;
+            saveData();
+        }
+
+        function renderNormalCell(item, config) {
+            const isYear = currentMode === 'year';
+            const data = isYear ? allYearsData[currentYear].yearData[config.id] : allYearsData[currentYear].monthData[currentMonth][config.id];
+            const bgImages = allYearsData[currentYear].backgroundImages;
+            const imgSrc = isYear ? bgImages.year[config.id] : (bgImages.month[currentMonth][config.id] || bgImages.year[config.id]);
+
+            // 目標列表 HTML
+            const goalsHtml = data.goals.map((g, idx) => `
+                <li class="goal-item">
+                    <div class="goal-number">${idx+1}</div>
+                    <div class="goal-checkbox ${g.completed?'checked':''}" onclick="toggleGoal('${config.id}', ${idx})"></div>
+                    <div class="goal-text" contenteditable="true" onblur="updateGoal('${config.id}', ${idx}, this.innerText)">${g.text}</div>
+                    <button class="mini-btn" style="color:#aaa" onclick="deleteGoal('${config.id}', ${idx})">×</button>
+                </li>
+            `).join('');
+
+            item.innerHTML = `
+                <div class="grid-title">${config.title}</div>
+                <ul class="goals-list">${goalsHtml}</ul>
+                
+                <div class="grid-footer">
+                    <div class="add-input-wrapper">
+                        <input type="text" class="add-input" placeholder="新增目標..." onkeypress="if(event.key==='Enter') addGoal('${config.id}', this)">
+                        <button class="add-btn" onclick="addGoal('${config.id}', this.previousElementSibling)">+</button>
+                    </div>
+                    
+                    <div class="image-display-area" onclick="document.getElementById('file-${config.id}').click()">
+                        ${imgSrc ? `<img src="${imgSrc}">` : `<span class="image-placeholder">點擊上傳圖片</span>`}
+                        <div class="img-controls">
+                            <button class="mini-btn" style="background:#2196f3" onclick="event.stopPropagation();document.getElementById('file-${config.id}').click()">更換</button>
+                            ${imgSrc ? `<button class="mini-btn" style="background:#f44336" onclick="event.stopPropagation();removeImage('${config.id}')">刪除</button>` : ''}
+                        </div>
+                    </div>
+                    <input type="file" id="file-${config.id}" style="display:none" accept="image/*" onchange="uploadImage('${config.id}', this)">
                 </div>
             `;
         }
 
-        // --- 事件處理與邏輯函式 ---
-
-        function setupGridItemListeners() {
-            // 圖片上傳
-            document.querySelectorAll('.image-upload-input').forEach(input => {
-                input.onchange = (e) => {
-                    const gridId = e.target.dataset.gridId;
-                    const file = e.target.files[0];
-                    if (file) handleImageUpload(gridId, file);
-                };
-            });
+        // 邏輯功能
+        function addGoal(gridId, input) {
+            if(!input.value.trim()) return;
+            const isYear = currentMode === 'year';
+            const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
             
-            document.querySelectorAll('.page-toggle').forEach(p => p.addEventListener('click', (e) => {
-                if(e.target.dataset.action === 'clear-data') {
-                    handleClearData();
-                }
-            }));
-            
-            document.querySelectorAll('.upload-btn').forEach(btn => {
-                if(btn.dataset.action === 'upload-img') {
-                     btn.onclick = (e) => {
-                        const gridId = e.target.closest('.image-upload-zone').querySelector('.image-upload-input').dataset.gridId;
-                        document.getElementById(`imgUpload-${gridId}`).click();
-                     }
-                }
-                if(btn.dataset.action === 'delete-img') {
-                    btn.onclick = (e) => {
-                        const gridId = e.target.closest('.image-upload-zone').querySelector('.image-upload-input').dataset.gridId;
-                        deleteBackgroundImage(gridId);
-                    }
-                }
-            });
-
-            document.querySelectorAll('.add-btn').forEach(btn => {
-                btn.onclick = (e) => addGoal(e.target.dataset.id);
-            });
-            document.querySelectorAll('.add-input').forEach(input => {
-                input.onkeypress = (e) => {
-                    if (e.key === 'Enter') addGoal(e.target.dataset.id);
-                };
-            });
-            
-            // 事件委派：統一處理目標項目內的點擊事件 (打勾, 編輯, 刪除, 關聯)
-            document.querySelectorAll('.goals-list').forEach(list => {
-                list.addEventListener('click', (e) => {
-                    const item = e.target.closest('[data-action]');
-                    if (!item) return;
-
-                    const action = item.dataset.action;
-                    const goalItem = item.closest('.goal-item');
-                    const gridId = goalItem.dataset.gridId;
-                    const index = parseInt(goalItem.dataset.index);
-
-                    switch(action) {
-                        case 'toggle-check':
-                            toggleGoal(gridId, index);
-                            break;
-                        case 'delete':
-                            if (confirm('確定刪除此目標嗎？')) deleteGoal(gridId, index);
-                            break;
-                        case 'edit':
-                            startEditGoal(goalItem, gridId, index);
-                            break;
-                        case 'toggle-frog':
-                            toggleFrogMark(gridId, index);
-                            break;
-                        case 'change-link':
-                        case 'change-link-btn':
-                            changeYearGoalLink(gridId, index);
-                            break;
-                    }
-                });
-            });
-
-            // 拖曳事件
-            document.querySelectorAll('.goal-item').forEach(item => {
-                item.addEventListener('dragstart', handleDragStart);
-                item.addEventListener('dragend', handleDragEnd);
-                item.addEventListener('dragover', handleDragOver);
-                item.addEventListener('dragleave', handleDragLeave);
-                item.addEventListener('drop', handleDrop);
-            });
-            
-            // 月度目標輸入時顯示參考
-            if (currentMode === 'month') {
-                document.querySelectorAll('.add-input').forEach(input => {
-                    input.addEventListener('focus', (e) => showReferenceTooltip(e.target.dataset.id, e.target));
-                    input.addEventListener('blur', () => setTimeout(hideReferenceTooltip, 200));
-                });
-            }
-        }
-        
-        // --- 清空資料處理 (新增的按鈕功能) ---
-        async function handleClearData() {
-            if (!confirm('⚠️ 警告：這將永久清除資料庫中所有年度的規劃數據！確定要繼續嗎？')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/test/clear-data`, {
-                    method: 'DELETE',
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ 資料庫已清空。正在重新載入頁面...');
-                    // 清空本地數據結構
-                    allYearsData = {};
-                    // 重新載入頁面，會自動從空資料庫載入空白結構
-                    window.location.reload(); 
-                } else {
-                    alert(`❌ 清空失敗：${result.error || result.message}`);
-                    console.error(result);
-                }
-            } catch (error) {
-                alert('❌ 清空失敗：無法連線到伺服器 API。');
-                console.error(error);
-            }
-        }
-
-        
-        function handleImageUpload(gridId, file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                // 儲存為 Base64 數據
-                setBackgroundImage(gridId, e.target.result);
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function setBackgroundImage(gridId, imageData) {
-            const bgImages = getBackgroundImages();
-
-            if (currentMode === 'year') {
-                bgImages.year[gridId] = imageData;
-            } else {
-                bgImages.month[currentMonth][gridId] = imageData;
-            }
+            targetData.goals.push({ text: input.value, completed: false });
+            input.value = '';
             saveData();
             renderGrid();
         }
 
-        function deleteBackgroundImage(gridId) {
-            if (!confirm('確定要刪除背景圖片嗎？')) return;
-            const bgImages = getBackgroundImages();
+        function toggleGoal(gridId, idx) {
+            const isYear = currentMode === 'year';
+            const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
+            targetData.goals[idx].completed = !targetData.goals[idx].completed;
+            saveData();
+            renderGrid();
+        }
 
-            if (currentMode === 'year') {
+        function updateGoal(gridId, idx, text) {
+            const isYear = currentMode === 'year';
+            const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
+            targetData.goals[idx].text = text;
+            saveData();
+        }
+
+        function deleteGoal(gridId, idx) {
+            if(!confirm('確定刪除?')) return;
+            const isYear = currentMode === 'year';
+            const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
+            targetData.goals.splice(idx, 1);
+            saveData();
+            renderGrid();
+        }
+
+        function uploadImage(gridId, input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const bgImages = allYearsData[currentYear].backgroundImages;
+                if(currentMode === 'year') {
+                    bgImages.year[gridId] = e.target.result;
+                } else {
+                    bgImages.month[currentMonth][gridId] = e.target.result;
+                }
+                saveData();
+                renderGrid();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(gridId) {
+            const bgImages = allYearsData[currentYear].backgroundImages;
+            if(currentMode === 'year') {
                 delete bgImages.year[gridId];
             } else {
                 delete bgImages.month[currentMonth][gridId];
@@ -957,586 +425,76 @@
             renderGrid();
         }
 
-        function toggleFrogMark(gridId, index) {
-            const data = currentMode === 'year' ? getCurrentYearData() : getCurrentMonthData()[currentMonth];
-            const goal = data[gridId].goals[index];
-            
-            goal.hasFrog = !goal.hasFrog;
-            saveData();
-            renderGrid();
-        }
-
-        function addGoal(gridId) {
-            const input = document.querySelector(`.add-input[data-id="${gridId}"]`);
-            const text = input.value.trim();
-            if (!text) return;
-            
-            if (currentMode === 'year') {
-                // 年度目標直接新增
-                const yearData = getCurrentYearData();
-                yearData[gridId].goals.push({
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                    text: text,
-                    completed: false,
-                    monthGoals: [],
-                    hasFrog: false
-                });
-                input.value = '';
-                saveData();
-                renderGrid();
-            } else {
-                // 月度目標：彈出關聯選擇器
-                input.value = ''; // 先清空輸入框，避免二次提交
-                showLinkSelectorModal(gridId, text, null);
-            }
-        }
-        
-        // --- 拖曳排序邏輯 (需求 2) ---
-        function handleDragStart(e) {
-            draggedElement = this;
-            e.dataTransfer.effectAllowed = 'move';
-            this.classList.add('dragging');
-        }
-
-        function handleDragEnd() {
-            draggedElement.classList.remove('dragging');
-            document.querySelectorAll('.goal-item').forEach(item => {
-                item.classList.remove('drag-over-top', 'drag-over-bottom');
-            });
-        }
-
-        function handleDragOver(e) {
-            if (e.preventDefault) e.preventDefault();
-            if (this.dataset.gridId !== draggedElement.dataset.gridId) return; // 只能在同一個格子內拖曳
-
-            const rect = this.getBoundingClientRect();
-            const y = e.clientY - rect.top;
-            
-            document.querySelectorAll('.goal-item').forEach(item => {
-                item.classList.remove('drag-over-top', 'drag-over-bottom');
-            });
-
-            if (y < rect.height / 2) {
-                this.classList.add('drag-over-top');
-            } else {
-                this.classList.add('drag-over-bottom');
-            }
-        }
-        
-        function handleDragLeave() {
-            this.classList.remove('drag-over-top', 'drag-over-bottom');
-        }
-
-        function handleDrop(e) {
-            if (e.stopPropagation) e.stopPropagation();
-            if (this.dataset.gridId !== draggedElement.dataset.gridId) return;
-
-            const targetIndex = parseInt(this.dataset.index);
-            const sourceIndex = parseInt(draggedElement.dataset.index);
-            const gridId = this.dataset.gridId;
-            
-            let goals = currentMode === 'year' ? getCurrentYearData()[gridId].goals : getCurrentMonthData()[currentMonth][gridId].goals;
-            
-            const rect = this.getBoundingClientRect();
-            const y = e.clientY - rect.top;
-            
-            const targetPos = y < rect.height / 2 ? targetIndex : targetIndex + 1;
-            
-            if (sourceIndex === targetPos || sourceIndex === targetPos - 1) return;
-            
-            const [draggedGoal] = goals.splice(sourceIndex, 1);
-            
-            // 調整目標位置
-            if (targetPos > sourceIndex) {
-                goals.splice(targetPos - 1, 0, draggedGoal);
-            } else {
-                goals.splice(targetPos, 0, draggedGoal);
-            }
-
-            saveData();
-            renderGrid();
-        }
-        
-        // --- 編輯邏輯 (需求 1) ---
-        function startEditGoal(goalItem, gridId, index) {
-            goalItem.classList.add('editing');
-            const input = goalItem.querySelector('.goal-text-input');
-            input.focus();
-            input.select();
-            
-            input.onblur = () => finishEditGoal(goalItem, gridId, index, input.value);
-        }
-
-        function finishEditGoal(goalItem, gridId, index, newText) {
-            goalItem.classList.remove('editing');
-            newText = newText.trim();
-            if (!newText) {
-                renderGrid(); // 保持原狀
-                return;
-            }
-
-            const data = currentMode === 'year' ? getCurrentYearData() : getCurrentMonthData()[currentMonth];
-            const goal = data[gridId].goals[index];
-            goal.text = newText;
-            
-            // 更新年度目標下的月度目標顯示 (如果關聯存在)
-            if (currentMode === 'month' && goal.yearGoalId) {
-                const yearGoal = getCurrentYearData()[gridId].goals.find(g => g.id === goal.yearGoalId);
-                if (yearGoal && yearGoal.monthGoals) {
-                    const monthGoalEntry = yearGoal.monthGoals.find(mg => mg.goalId === goal.id);
-                    if (monthGoalEntry) monthGoalEntry.text = newText;
-                }
-            }
-            
-            saveData();
-            renderGrid();
-        }
-
-        // --- 月度目標關聯邏輯 (需求 3, 4.3, 14) ---
-        let pendingNewGoal = null;
-        let editingGoalInfo = null;
-        
-        function showLinkSelectorModal(gridId, goalText, editingIndex) {
-            const yearGoals = getCurrentYearData()[gridId].goals;
-            const modal = document.getElementById('linkSelectorModal');
-            const optionsDiv = document.getElementById('yearGoalOptions');
-            const title = document.getElementById('linkSelectorTitle');
-            
-            pendingNewGoal = editingIndex === null ? { gridId, goalText } : null;
-            editingGoalInfo = editingIndex !== null ? { gridId, index: editingIndex } : null;
-
-            title.textContent = editingIndex === null ? `新增月度目標：關聯年度目標` : `修改關聯：${goalText}`;
-            
-            let currentYearGoalId = null;
-            if (editingIndex !== null) {
-                currentYearGoalId = getCurrentMonthData()[currentMonth][gridId].goals[editingIndex].yearGoalId;
-            }
-
-            let optionsHtml = yearGoals.map((goal, index) => {
-                const isChecked = currentYearGoalId === goal.id ? 'checked' : '';
-                return `
-                    <div class="year-goal-option" data-id="${goal.id}">
-                        <input type="radio" name="yearGoalLink" value="${goal.id}" id="yg_${goal.id}" ${isChecked}>
-                        <label for="yg_${goal.id}">【年度目標 ${index + 1}】${goal.text}</label>
-                    </div>
-                `;
-            }).join('');
-            
-            const noLinkChecked = currentYearGoalId === null ? 'checked' : '';
-            optionsHtml += `
-                <div class="year-goal-option" data-id="none">
-                    <input type="radio" name="yearGoalLink" value="" id="yg_none" ${noLinkChecked}>
-                    <label for="yg_none">不關聯年度目標</label>
-                </div>
-            `;
-
-            optionsDiv.innerHTML = optionsHtml;
-            
-            // 監聽單選框變化
-            optionsDiv.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.onchange = (e) => {
-                    const newYearGoalId = e.target.value || null;
-                    if (editingGoalInfo) {
-                        // 修改現有關聯 (需求 14)
-                        updateMonthGoalLink(editingGoalInfo.gridId, editingGoalInfo.index, newYearGoalId);
-                    } else if (pendingNewGoal) {
-                        // 新增月度目標
-                        addMonthGoalWithLink(pendingNewGoal.gridId, pendingNewGoal.goalText, newYearGoalId);
-                    }
-                    hideLinkSelectorModal();
-                };
-            });
-            
-            modal.style.display = 'flex';
-        }
-        
-        function hideLinkSelectorModal() {
-            document.getElementById('linkSelectorModal').style.display = 'none';
-            pendingNewGoal = null;
-            editingGoalInfo = null;
-        }
-
-        function changeYearGoalLink(gridId, index) {
-            const goal = getCurrentMonthData()[currentMonth][gridId].goals[index];
-            showLinkSelectorModal(gridId, goal.text, index);
-        }
-
-        function addMonthGoalWithLink(gridId, text, yearGoalId) {
-            const monthData = getCurrentMonthData();
-            const yearData = getCurrentYearData();
-
-            const newGoal = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                yearGoalId: yearGoalId,
-                text: text,
-                completed: false,
-                hasFrog: false
-            };
-            
-            // 1. 新增到月度目標
-            monthData[currentMonth][gridId].goals.push(newGoal);
-
-            // 2. 更新年度目標的月度列表
-            if (yearGoalId) {
-                const yearGoal = yearData[gridId].goals.find(g => g.id === yearGoalId);
-                if (yearGoal) {
-                    if (!yearGoal.monthGoals) yearGoal.monthGoals = [];
-                    yearGoal.monthGoals.push({
-                        month: currentMonth,
-                        text: text,
-                        goalId: newGoal.id
-                    });
-                }
-            }
-            saveData();
-            renderGrid();
-        }
-
-        function updateMonthGoalLink(gridId, goalIndex, newYearGoalId) {
-            const monthData = getCurrentMonthData();
-            const yearData = getCurrentYearData();
-            const goal = monthData[currentMonth][gridId].goals[goalIndex];
-            
-            const oldYearGoalId = goal.yearGoalId;
-            goal.yearGoalId = newYearGoalId;
-            
-            // 從舊年度目標的月度列表中移除
-            if (oldYearGoalId) {
-                const oldYearGoal = yearData[gridId].goals.find(g => g.id === oldYearGoalId);
-                if (oldYearGoal) {
-                    oldYearGoal.monthGoals = oldYearGoal.monthGoals.filter(
-                        mg => mg.goalId !== goal.id || mg.month !== currentMonth
-                    );
-                }
-            }
-            
-            // 加入新年度目標的月度列表
-            if (newYearGoalId) {
-                const newYearGoal = yearData[gridId].goals.find(g => g.id === newYearGoalId);
-                if (newYearGoal) {
-                    if (!newYearGoal.monthGoals) newYearGoal.monthGoals = [];
-                    // 檢查是否已存在 (避免重複)
-                    if (!newYearGoal.monthGoals.find(mg => mg.goalId === goal.id && mg.month === currentMonth)) {
-                        newYearGoal.monthGoals.push({
-                            month: currentMonth,
-                            text: goal.text,
-                            goalId: goal.id
-                        });
-                    }
-                }
-            }
-            saveData();
-            renderGrid();
-        }
-        
-        // --- 刪除/完成邏輯 ---
-
-        function toggleGoal(gridId, index) {
-            const data = currentMode === 'year' ? getCurrentYearData() : getCurrentMonthData()[currentMonth];
-            const goal = data[gridId].goals[index];
-            goal.completed = !goal.completed;
-            
-            const allGoals = GRID_CONFIG.filter(c => !c.isCenter).flatMap(c => data[c.id].goals);
-            const completedGoals = allGoals.filter(g => g.completed);
-            
-            // 煙花效果 (需求 7)
-            if (goal.completed && allGoals.length > 0 && completedGoals.length === allGoals.length) {
-                triggerFireworks();
-            }
-            
-            saveData();
-            renderGrid();
-            updateStats();
-        }
-
-        function deleteGoal(gridId, index) {
-            const data = currentMode === 'year' ? getCurrentYearData() : getCurrentMonthData()[currentMonth];
-            const goal = data[gridId].goals[index];
-            
-            if (currentMode === 'year') {
-                // 如果是刪除年度目標，需同步刪除所有月度目標中對它的關聯
-                const monthData = getCurrentMonthData();
-                for(let month=1; month<=12; month++) {
-                    monthData[month][gridId].goals = monthData[month][gridId].goals.filter(mg => mg.yearGoalId !== goal.id);
-                }
-            } else {
-                // 如果是刪除月度目標，需同步移除年度目標中的月度列表項目
-                if (goal.yearGoalId) {
-                    const yearGoal = getCurrentYearData()[gridId].goals.find(g => g.id === goal.yearGoalId);
-                    if (yearGoal && yearGoal.monthGoals) {
-                        yearGoal.monthGoals = yearGoal.monthGoals.filter(mg => mg.goalId !== goal.id);
-                    }
-                }
-            }
-
-            data[gridId].goals.splice(index, 1);
-            
-            // 由於 splice 會改變 index，必須重新渲染
-            saveData();
-            renderGrid();
-            updateStats();
-        }
-
-        // --- 輔助函式 ---
-
-        function showReferenceTooltip(gridId, inputElement) {
-            const tooltip = document.getElementById('referenceTooltip');
-            const config = GRID_CONFIG.find(c => c.id === gridId);
-            if (!config || config.isCenter) return;
-            
-            const yearGoals = getCurrentYearData()[gridId].goals;
-            const prevMonthGoals = currentMonth > 1 ? getCurrentMonthData()[currentMonth - 1][gridId].goals : [];
-            
-            let content = `<h4>年度目標：${config.title}</h4>`;
-            
-            // 年度目標參考
-            if (yearGoals.length > 0) {
-                content += `<div style="margin-bottom: 15px;">
-                    ${yearGoals.map((g, i) => `<div class="reference-goal-item">【${i+1}】${g.text}</div>`).join('')}
-                </div>`;
-            } else {
-                content += `<p style="font-style: italic; color: var(--text-secondary);">尚未設定年度目標</p>`;
-            }
-            
-            // 前月目標參考
-            if (prevMonthGoals.length > 0) {
-                content += `<h4>${currentMonth - 1}月目標：${config.title}</h4>
-                    <div style="margin-bottom: 15px;">
-                        ${prevMonthGoals.map((g, i) => `<div class="reference-goal-item">【${i+1}】${g.text} ${g.completed ? '(✓)' : ''}</div>`).join('')}
-                    </div>`;
-            }
-
-            tooltip.innerHTML = content;
-            
-            // 調整位置：固定在輸入框右上方
-            const rect = inputElement.getBoundingClientRect();
-            tooltip.style.left = `${rect.right + 10}px`;
-            tooltip.style.top = `${rect.top - tooltip.offsetHeight}px`;
-            tooltip.classList.add('show');
-        }
-
-        function hideReferenceTooltip() {
-            document.getElementById('referenceTooltip').classList.remove('show');
-        }
-        
-        // --- 統計與勉勵 (需求 8, 10) ---
-
-        function updateStats() {
-            const yearData = getCurrentYearData();
-            const monthData = getCurrentMonthData();
-
-            // 年度目標統計
-            let yearTotal = 0;
-            let yearCompleted = 0;
-            GRID_CONFIG.filter(c => !c.isCenter).forEach(c => {
-                const goals = yearData[c.id].goals;
-                yearTotal += goals.length;
-                yearCompleted += goals.filter(g => g.completed).length;
-            });
-
-            const yearPercent = yearTotal > 0 ? Math.round((yearCompleted / yearTotal) * 100) : 0;
-            
-            document.getElementById('yearTotal').textContent = yearTotal;
-            document.getElementById('yearCompleted').textContent = yearCompleted;
-            document.getElementById('yearCompletionPercent').textContent = `${yearPercent}%`;
-            document.getElementById('yearProgressBar').style.width = `${yearPercent}%`;
-
-            // 全年月度目標統計
-            let allMonthTotal = 0;
-            let allMonthCompleted = 0;
-            for (let month = 1; month <= 12; month++) {
-                GRID_CONFIG.filter(c => !c.isCenter).forEach(c => {
-                    const goals = monthData[month][c.id].goals;
-                    allMonthTotal += goals.length;
-                    allMonthCompleted += goals.filter(g => g.completed).length;
-                });
-            }
-            const allMonthPercent = allMonthTotal > 0 ? Math.round((allMonthCompleted / allMonthTotal) * 100) : 0;
-
-            document.getElementById('allMonthTotal').textContent = allMonthTotal;
-            document.getElementById('allMonthCompleted').textContent = allMonthCompleted;
-            document.getElementById('allMonthCompletionPercent').textContent = `${allMonthPercent}%`;
-            document.getElementById('allMonthProgressBar').style.width = `${allMonthPercent}%`;
-            
-            // 勉勵的話 (需求 10)
-            const encouragement = getEncouragement(yearPercent);
-            document.getElementById('encouragementText').textContent = encouragement;
-        }
-
-        function getEncouragement(percent) {
-            if (percent === 100) return "🎉 圓滿達成！年度目標完美收官，卓越的執行力！";
-            if (percent >= 90) return "🏆 接近完美！只需最後的衝刺，年度目標就在眼前！";
-            if (percent >= 80) return "🌟 表現出色！你已完成大部分挑戰，繼續保持！";
-            if (percent >= 70) return "🚀 穩健前進！距離終點線不遠了，加速實現願景！";
-            if (percent >= 60) return "💪 超越六成！成果斐然，你的努力沒有白費。";
-            if (percent >= 50) return "🎯 達到半程！成功跨越里程碑，下半程目標明確！";
-            if (percent >= 40) return "📈 積極向上！正穩步累積，你的每一步都在成長。";
-            if (percent >= 30) return "🌱 保持動力！已經有很好的開始，堅持就是勝利！";
-            if (percent >= 20) return "💡 良好開端！明確目標，專注執行，你會做得更好！";
-            if (percent >= 10) return "🏃‍♂️ 已經上路！萬事開頭難，你已邁出關鍵一步。";
-            return "✨ 設定目標，就是邁向成功的第一步！";
-        }
-        
-        // --- 煙花動畫 (需求 7) ---
-        const canvas = document.getElementById('fireworks');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        let isFireworksActive = false;
-
-        function initCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', initCanvas);
-
-        class Particle {
-            // ... (粒子類別實現, 與前一個回應的代碼相同，省略細節) ...
-            constructor(x, y, color) {
-                this.x = x; this.y = y; this.color = color;
-                this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 };
-                this.alpha = 1; this.decay = Math.random() * 0.015 + 0.015;
-                this.radius = Math.random() * 3 + 2;
-            }
-            draw() {
-                ctx.save(); ctx.globalAlpha = this.alpha; ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color; ctx.fill(); ctx.restore();
-            }
-            update() {
-                this.velocity.y += 0.1; this.x += this.velocity.x;
-                this.y += this.velocity.y; this.alpha -= this.decay;
-            }
-        }
-
-        function createFirework(x, y) {
-            const colors = ['#ff6b6b', '#4ecdc4', '#f7dc6f', '#bb8fce', '#85c1e2', '#eb5e7f', 'white'];
-            const particleCount = 60;
-            for (let i = 0; i < particleCount; i++) {
-                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
-            }
-        }
-
-        function animateFireworks() {
-            if (!isFireworksActive) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                particles = [];
-                return;
-            }
-
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            particles.forEach((particle, index) => {
-                if (particle.alpha <= 0) {
-                    particles.splice(index, 1);
-                } else {
-                    particle.update();
-                    particle.draw();
-                }
-            });
-
-            requestAnimationFrame(animateFireworks);
-        }
-
-        function triggerFireworks() {
-            isFireworksActive = true;
-            const fireworkCount = 8;
-            let count = 0;
-            
-            const interval = setInterval(() => {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height * 0.6;
-                createFirework(x, y);
-                
-                count++;
-                if (count >= fireworkCount) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        isFireworksActive = false;
-                    }, 3000); // 3秒後停止
-                }
-            }, 200);
-
-            animateFireworks();
-        }
-        
-        // --- 初始化主程式 ---
-
-        async function initializeApp() {
-            // 設置年份選擇器
-            const yearSelect = document.getElementById('yearSelect');
-            const currentYearValue = new Date().getFullYear();
-            for (let year = currentYearValue - 5; year <= currentYearValue + 5; year++) {
-                const option = document.createElement('option');
-                option.value = year;
-                option.textContent = `${year}年`;
-                if (year === currentYearValue) option.selected = true;
-                yearSelect.appendChild(option);
-            }
-            currentYear = currentYearValue;
-            
-            // 初始化月份選擇器
-            document.querySelectorAll('.month-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.month-btn[data-month="${currentMonth}"]`).classList.add('active');
-
-            // --- 修正: 在啟動時載入資料 ---
-            await loadData();
-            
-            // 渲染介面
-            renderGrid();
-            updateStats();
-            
-            // 事件監聽
-            document.getElementById('yearSelect').onchange = async (e) => {
-                currentYear = parseInt(e.target.value);
-                await loadData(); // 載入新年份資料
-                renderGrid();
-                updateStats();
-            };
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.onclick = (e) => switchMode(e.currentTarget.dataset.mode));
-            document.querySelectorAll('.month-btn').forEach(btn => btn.onclick = (e) => switchMonth(parseInt(e.currentTarget.dataset.month)));
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.onclick = (e) => switchTheme(e.currentTarget.dataset.theme));
-            document.querySelectorAll('.page-btn').forEach(btn => btn.onclick = (e) => switchPage(e.currentTarget.dataset.page));
-            
-            // 啟用 Canvas
-            initCanvas();
-        }
-        
         function switchMode(mode) {
             currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
-            document.getElementById('monthSelector').style.display = (mode === 'month' ? 'flex' : 'none');
+            document.getElementById('monthSelector').style.display = mode === 'month' ? 'flex' : 'none';
             renderGrid();
         }
-        
-        function switchMonth(month) {
-            currentMonth = month;
-            document.querySelectorAll('.month-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.month-btn[data-month="${month}"]`).classList.add('active');
-            renderGrid();
-        }
-        
-        function switchTheme(theme) {
-            document.body.className = theme;
-            allYearsData[currentYear].theme = theme; // 保存主題到當前年份數據
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.theme-btn[data-theme="${theme}"]`).classList.add('active');
-            saveData();
-        }
-        
+
         function switchPage(page) {
-            document.querySelectorAll('.page-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`.page-btn[data-page="${page}"]`).classList.add('active');
-            document.querySelectorAll('.page-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(`${page}Page`).classList.add('active');
-            if (page === 'stats') updateStats();
+            document.getElementById('plannerPage').style.display = page === 'planner' ? 'block' : 'none';
+            document.getElementById('statsPage').style.display = page === 'stats' ? 'block' : 'none';
+            if(page === 'stats') updateStats();
         }
 
-        initializeApp();
+        function updateStats() {
+            // 簡易統計顯示
+            let total = 0, done = 0;
+            // 統計年度
+            Object.values(allYearsData[currentYear].yearData).forEach(g => {
+                if(g.goals) {
+                    total += g.goals.length;
+                    done += g.goals.filter(x => x.completed).length;
+                }
+            });
+            const percent = total === 0 ? 0 : Math.round((done/total)*100);
+            document.getElementById('statsContent').innerHTML = `
+                <div style="font-size:3rem; color:var(--accent); font-weight:bold;">${percent}%</div>
+                <div>年度目標：完成 ${done} / ${total}</div>
+            `;
+        }
 
+        // --- 資料庫操作 ---
+        async function handleBackup() {
+            window.location.href = '/api/db/backup';
+        }
+
+        async function handleRestore(input) {
+            const file = input.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    const res = await fetch('/api/db/restore', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(json)
+                    });
+                    const result = await res.json();
+                    if(result.success) {
+                        alert('還原成功！頁面將重新整理。');
+                        window.location.reload();
+                    } else {
+                        alert('還原失敗：' + result.error);
+                    }
+                } catch (err) {
+                    alert('檔案格式錯誤');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function handleClearData() {
+            if(!confirm('確定清空所有資料庫內容？此操作無法復原！')) return;
+            await fetch('/api/test/clear-data', { method: 'DELETE' });
+            window.location.reload();
+        }
+
+        initApp();
     </script>
 </body>
 </html>
