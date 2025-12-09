@@ -99,7 +99,8 @@
 
         /* 圖片顯示區 - 移至最下方 */
         .image-display-area { 
-            width: 100%; min-height: 50px; 
+            width: 100%; 
+            aspect-ratio: 1 / 1; /* 改成方形 */
             border: 2px dashed var(--border); border-radius: 8px; 
             display: flex; align-items: center; justify-content: center; 
             overflow: hidden; position: relative; margin-top: 5px;
@@ -107,7 +108,7 @@
             transition: all 0.3s;
         }
         .image-display-area:hover { background: rgba(0,0,0,0.05); border-color: var(--accent); }
-        .image-display-area img { width: 100%; height: auto; display: block; object-fit: cover; max-height: 150px; }
+        .image-display-area img { width: 100%; height: 100%; display: block; object-fit: contain; }
         .image-placeholder { color: var(--text-secondary); font-size: 0.8rem; pointer-events: none; }
         
         /* 圖片控制按鈕 (懸浮在圖片區上方) */
