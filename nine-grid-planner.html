@@ -1,0 +1,18 @@
+<!-- 
+    此檔案不是給使用者直接開啟的，而是用來模擬在 Zeabur 部署環境下，
+    我們可以直接讀取同目錄下的 9 張圖片 (1.jpg - 9.jpg) 的情境。
+    
+    由於 Canvas 環境限制，無法直接讀取本地檔案，
+    我們將在 HTML 檔案中包含這些圖片的 Base64 數據，以便 index.html 調用。
+
+    在實際部署時，請確保 1.jpg~9.jpg 檔案與 index.html 放在同一個目錄下。
+    
+    為了實現需求，index.html 中的 getBackgroundImageURL 已經修改為：
+    1. 優先讀取 Base64 (用戶上傳)
+    2. 其次讀取 `./1.jpg` 等本地檔案 (如果用戶沒上傳)
+-->
+<div style="text-align: center; padding: 20px; font-family: system-ui, sans-serif;">
+    <p>此檔案僅為模擬 Nine-Grid Planner 的靜態圖片資源。</p>
+    <p>請確認您的 GitHub 儲存庫中包含 1.jpg 至 9.jpg 作為每個格子的預設背景圖。</p>
+    <p>前端程式碼 (index.html) 已經被修改為嘗試讀取這些檔案。</p>
+</div>
