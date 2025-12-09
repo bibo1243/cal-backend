@@ -1,38 +1,34 @@
 // 引入必要的模組
 const express = require('express');
 const mysql = require('mysql2/promise'); // 使用 Promise 版本方便異步操作
-// 移除 XLSX 和 fs 引用，因為它們在核心 API 邏輯中未使用
-// const XLSX = require('xlsx');
-// const fs = require('fs');
 const path = require('path');
 const app = express();
 
 // PaaS 平台會自動設定 PORT，我們使用環境變數
-const PORT = process.env.PORT || 8080; // Zeabur 預設 Port 號通常是 8080
-const PUBLIC_DIR = path.join(__dirname); // 靜態檔案目錄 (目前是根目錄)
+const PORT = process.env.PORT || 8080; 
+const PUBLIC_DIR = path.join(__dirname); 
 
 // --- 資料庫連線設定 ---
-// 優先檢查手動設定的 DB_* 變數，其次檢查 Zeabur 自動注入的 MYSQL_* 變數
 let pool;
 
 async function connectToDatabase() {
     let dbConfig = {};
     
-    // 優先檢查我們手動設定的 DB_ 變數
+    // 優先檢查手動設定的 DB_ 變數
     if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASS && process.env.DB_NAME) {
         dbConfig = {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             password: process.env.DB_PASS,
             database: process.env.DB_NAME,
-            port: process.env.MYSQL_PORT || 3306, // PORT 仍然可能需要從 MYSQL_PORT 或預設值獲取
-            charset: 'utf8mb4', 
-            collation: 'utf8mb4_unicode_ci' // 🌟 修正 1: 強制排序規則
+            port: process.env.MYSQL_PORT || 3306,
+            // 🌟 修正：確保連線使用 utf8mb4
+            charset: 'UTF8MB4_GENERAL_CI', // mysql2 有時需要用這種格式來指定 charset
+            timezone: '+08:00'
         };
         console.log("ℹ️ 偵測到手動設定的 DB_* 變數。");
-        
     } 
-    // 其次檢查 Zeabur 自動注入的 MYSQL_ 變數 (如果它們被正確展開)
+    // 其次檢查 Zeabur 自動注入的 MYSQL_ 變數
     else if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
         dbConfig = {
             host: process.env.MYSQL_HOST,
@@ -40,213 +36,146 @@ async function connectToDatabase() {
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DATABASE,
             port: process.env.MYSQL_PORT || 3306,
-            charset: 'utf8mb4',
-            collation: 'utf8mb4_unicode_ci' // 🌟 修正 2: 強制排序規則
+            charset: 'UTF8MB4_GENERAL_CI',
+            timezone: '+08:00'
         };
         console.log("ℹ️ 偵測到 Zeabur 自動注入的 MYSQL_* 變數。");
-        
     } else {
-        // 連線失敗警告
         console.error("❌ 警告：未找到任何完整的 MySQL 連線變數。");
-        console.error("❌ 服務將以離線模式啟動，無法永久儲存資料。");
         return;
     }
 
     try {
-        // 關鍵修正：確保 MySQL 驅動程式正確處理 JSON 類型欄位
-        dbConfig.typeCast = function (field, next) {
-            if (field.type === 'JSON') {
-                return field.string(); // 將 JSON 欄位強制轉換為字串，方便後續的 JSON.parse
-            }
-            return next();
-        };
-        
-        // 嘗試連線到資料庫
+        // 建立連線池
         pool = mysql.createPool(dbConfig);
+        
+        // 🌟 強制執行 SET NAMES，確保連線層級編碼正確
+        const connection = await pool.getConnection();
+        await connection.query("SET NAMES 'utf8mb4'");
+        await connection.query("SET CHARACTER SET utf8mb4");
+        connection.release();
+        
         console.log('✅ MySQL 資料庫連線池建立成功！');
         
-        // 檢查並創建表格
-        // 確保表格的 JSON 欄位能處理 UTF-8 字元
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS annual_plans (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                year INT NOT NULL,
-                data JSON NOT NULL,
-                theme VARCHAR(50),
-                bg_images JSON,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_year (year)
-            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-        `);
-        console.log('✅ 資料表 annual_plans 檢查/創建完成。');
+        // 檢查並創建表格 (確保使用 utf8mb4)
+        await createTable();
         
     } catch (err) {
-        // 強化錯誤輸出，方便最終判斷
-        const safeDbConfig = { ...dbConfig, password: '***REDACTED***' };
-        console.error(`❌ 資料庫連線或初始化失敗: ${err.message}`);
-        console.error(`❌ 連線配置: ${JSON.stringify(safeDbConfig)}`);
-        // 發生錯誤時，將 pool 設為 null，以防止 API 嘗試使用錯誤的連線
+        console.error('❌ 資料庫連線或初始化失敗:', err.message);
         pool = null; 
     }
 }
 
+async function createTable() {
+    if (!pool) return;
+    // 確保表格使用 utf8mb4 編碼
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS annual_plans (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            year INT NOT NULL,
+            data JSON NOT NULL,
+            theme VARCHAR(50),
+            bg_images JSON,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_year (year)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    console.log('✅ 資料表 annual_plans 檢查/創建完成 (UTF8MB4)。');
+}
+
 connectToDatabase();
 
-// --- 中介軟體 (Middleware) ---
-// 讓 Express 能夠解析 JSON 請求和處理大檔案 (Excel)
+// --- 中介軟體 ---
 app.use(express.json({ limit: '5mb' }));
 app.use(express.raw({ limit: '10mb', type: 'application/octet-stream' }));
-
-// 啟用靜態檔案服務：將整個目錄 (包含 index.html) 公開
-// 這樣前端 (index.html) 就可以直接被訪問
 app.use(express.static(PUBLIC_DIR));
 
-// 伺服器健康檢查 (Zeabur 部署成功訊息)
 app.get('/api/status', (req, res) => {
     res.send({ status: 'ok', message: 'Cal Planner Backend is running.', dbConnected: !!pool });
 });
 
-// --- 新增測試用 API：清空表格 ---
+// --- 徹底重置 API (DROP TABLE) ---
+// 這是解決編碼問題的關鍵：刪除舊的 latin1 表格，重建為 utf8mb4
 app.delete('/api/test/clear-data', async (req, res) => {
-    if (!pool) return res.status(503).json({ error: '資料庫離線，無法執行清空' });
+    if (!pool) return res.status(503).json({ error: '資料庫離線' });
     try {
-        await pool.query(`TRUNCATE TABLE annual_plans;`);
-        console.log('⚠️ 成功清空 annual_plans 表格所有資料。請重新整理網頁。');
-        return res.json({ success: true, message: '表格已清空，請重新整理網頁以載入空白狀態。' });
+        // 1. 刪除表格 (連同舊的編碼定義一起刪除)
+        await pool.query(`DROP TABLE IF EXISTS annual_plans;`);
+        console.log('⚠️ 已刪除舊表格。');
+        
+        // 2. 重新建立正確編碼的表格
+        await createTable();
+        
+        return res.json({ success: true, message: '資料庫已徹底重置並升級為 UTF8MB4。' });
     } catch (error) {
-        console.error('清空資料失敗:', error.message);
-        return res.status(500).json({ error: '執行 TRUNCATE 失敗。' });
+        console.error('重置資料失敗:', error.message);
+        return res.status(500).json({ error: '執行 DROP/CREATE 失敗。' });
     }
 });
 
 // --- 輔助函式：安全解析 JSON ---
-// 處理資料庫讀取時，row.data 可能是字串或物件的情況
 function safeParseJson(data) {
     if (typeof data === 'string') {
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            // console.error('JSON.parse 錯誤:', e.message); // 避免過多日誌
-            return null;
-        }
+        try { return JSON.parse(data); } catch (e) { return null; }
     }
-    // 如果它已經是物件，直接回傳
     return data; 
 }
 
-
-// --- API 接口：資料 CRUD ---
-
-// GET: 載入指定年份的所有資料
+// --- 資料 CRUD API ---
 app.get('/api/plan/:year', async (req, res) => {
-    // 檢查連線狀態
-    if (!pool) return res.status(503).json({ error: '資料庫離線，無法載入資料' });
-    
+    if (!pool) return res.status(503).json({ error: '資料庫離線' });
     const year = parseInt(req.params.year);
     
     try {
         const [rows] = await pool.query('SELECT data, theme, bg_images FROM annual_plans WHERE year = ?', [year]);
         if (rows.length > 0) {
             const row = rows[0];
-            
-            // 使用安全解析函式
             const parsedData = safeParseJson(row.data);
             const parsedBgImages = safeParseJson(row.bg_images);
 
             if (!parsedData || !parsedBgImages) {
-                // 如果解析失敗，表示數據已損壞
-                console.error(`⚠️ 數據解析失敗，可能是舊的亂碼數據。年份: ${year}`);
-                // 這裡我們仍然返回 404，讓前端使用預設結構
-                return res.status(404).json({ message: `找到資料但解析失敗，可能為舊亂碼。` });
+                // 如果解析失敗，回傳 404 讓前端用預設值覆蓋
+                return res.status(404).json({ message: `資料損毀` });
             }
 
-            const responseData = {
+            return res.json({
                 year: year,
                 theme: row.theme,
                 yearData: parsedData.yearData,
                 monthData: parsedData.monthData,
                 backgroundImages: parsedBgImages
-            };
-            return res.json(responseData);
+            });
         } else {
-            // 如果找不到資料，回傳 404，前端會用預設值初始化
-            return res.status(404).json({ message: `找不到 ${year} 年的資料` });
+            return res.status(404).json({ message: `無資料` });
         }
     } catch (error) {
-        console.error('資料載入失敗:', error.message);
-        return res.status(500).json({ error: '伺服器內部錯誤' });
+        console.error('讀取失敗:', error.message);
+        return res.status(500).json({ error: '伺服器錯誤' });
     }
 });
 
-// POST: 保存/更新所有年度資料 (這是主要保存接口)
 app.post('/api/plan/:year', async (req, res) => {
-    // 檢查連線狀態
-    if (!pool) return res.status(503).json({ error: '資料庫離線，無法保存資料' });
-    
+    if (!pool) return res.status(503).json({ error: '資料庫離線' });
     const year = parseInt(req.params.year);
     const { yearData, monthData, theme, backgroundImages } = req.body;
     
-    if (!yearData || !monthData) {
-        return res.status(400).json({ error: '缺少必要的年度或月度數據' });
-    }
+    if (!yearData || !monthData) return res.status(400).json({ error: '資料不完整' });
     
-    // 構造要存儲的數據結構
     const fullData = { yearData, monthData };
     
     try {
-        // 使用 JSON.stringify 確保數據以正確的 JSON 格式存入 MySQL
-        const result = await pool.query(
+        await pool.query(
             `INSERT INTO annual_plans (year, data, theme, bg_images) VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE data = VALUES(data), theme = VALUES(theme), bg_images = VALUES(bg_images)`,
             [year, JSON.stringify(fullData), theme, JSON.stringify(backgroundImages)]
         );
-
-        return res.json({ success: true, message: `${year} 年規劃已保存` });
+        return res.json({ success: true });
     } catch (error) {
-        console.error('資料保存失敗:', error.message);
-        return res.status(500).json({ error: '伺服器內部錯誤' });
+        console.error('保存失敗:', error.message);
+        return res.status(500).json({ error: '伺服器錯誤' });
     }
 });
 
-// --- API 接口：Excel 匯入/匯出 (檔案處理) ---
-// 這裡的 /api/data 接口用於前端的 loadData (替代 Excel 載入數據)
-
-app.get('/api/data', async (req, res) => {
-    // 這裡直接使用 /api/plan/:year 的邏輯，回傳最新年份的 JSON 數據。
-    if (!pool) return res.status(503).send('資料庫離線，無法載入資料');
-    
-    try {
-        const [rows] = await pool.query('SELECT year, data, theme, bg_images FROM annual_plans ORDER BY year DESC LIMIT 1');
-        if (rows.length > 0) {
-            const row = rows[0];
-            
-            const parsedData = safeParseJson(row.data);
-            const parsedBgImages = safeParseJson(row.bg_images);
-            
-            if (!parsedData || !parsedBgImages) {
-                return res.status(404).send('自動載入失敗，可能為舊亂碼，建議清空資料。');
-            }
-
-            const responseData = {
-                year: row.year,
-                theme: row.theme,
-                yearData: parsedData.yearData,
-                monthData: parsedData.monthData,
-                backgroundImages: parsedBgImages
-            };
-            return res.json(responseData);
-        } else {
-            return res.status(404).send('沒有任何已保存的年度資料');
-        }
-    } catch (error) {
-        console.error('自動載入資料失敗:', error.message);
-        return res.status(500).send('伺服器內部錯誤');
-    }
-});
-
-
-// 監聽 Port
 app.listen(PORT, () => {
-    console.log(`🚀 伺服器啟動於 Port ${PORT}`);
-    console.log(`📢 服務網址: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
