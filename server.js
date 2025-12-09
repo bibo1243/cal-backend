@@ -11,27 +11,14 @@ const PORT = process.env.PORT || 8080; // Zeabur 預設 Port 號通常是 8080
 const PUBLIC_DIR = path.join(__dirname); // 靜態檔案目錄 (目前是根目錄)
 
 // --- 資料庫連線設定 (Zeabur 自動注入) ---
-// 修正連線邏輯，優先使用標準的 DATABASE_URL 或完整的個別變數。
+// 修正：移除 DATABASE_URL 判斷，只依賴 MYSQL_* 變數
 let pool;
 
 async function connectToDatabase() {
     let dbConfig = {};
     
-    // 優先檢查 DATABASE_URL 變數 (通常用於手動連結或標準連線字串)
-    if (process.env.DATABASE_URL) {
-        // 從標準 URL 解析設定
-        const url = new URL(process.env.DATABASE_URL);
-        dbConfig = {
-            host: url.hostname,
-            user: url.username,
-            password: url.password,
-            database: url.pathname.substring(1), // 移除斜線
-            port: url.port || 3306 // 預設 MySQL Port
-        };
-        console.log("ℹ️ 偵測到 DATABASE_URL，將使用標準連線字串。");
-
-    } else if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
-        // 檢查個別環境變數
+    // 檢查個別環境變數 (這是 Zeabur 預期會注入的變數)
+    if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
         dbConfig = {
             host: process.env.MYSQL_HOST,
             user: process.env.MYSQL_USER,
@@ -39,11 +26,12 @@ async function connectToDatabase() {
             database: process.env.MYSQL_DATABASE,
             port: process.env.MYSQL_PORT || 3306
         };
-        console.log("ℹ️ 偵測到 MYSQL_HOST 等個別變數。");
+        console.log("ℹ️ 偵測到完整的 MYSQL_* 變數。");
         
     } else {
         // 連線失敗警告
-        console.error("❌ 警告：未找到完整的 MySQL 連線變數 (DATABASE_URL 或 MYSQL_*)。");
+        console.error("❌ 警告：未找到完整的 MySQL 連線變數 (MYSQL_HOST 等)。");
+        console.error("❌ 請確認您已在 Zeabur 介面中將 MySQL 服務連結到此服務。");
         console.error("❌ 服務將以離線模式啟動，無法永久儲存資料。");
         return;
     }
