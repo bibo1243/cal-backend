@@ -26,7 +26,8 @@ async function connectToDatabase() {
             password: process.env.DB_PASS,
             database: process.env.DB_NAME,
             port: process.env.MYSQL_PORT || 3306, // PORT 仍然可能需要從 MYSQL_PORT 或預設值獲取
-            charset: 'utf8mb4' // 🌟 修正 1: 強制使用 UTF8MB4 字符集
+            charset: 'utf8mb4', 
+            collation: 'utf8mb4_unicode_ci' // 🌟 修正 1: 強制排序規則
         };
         console.log("ℹ️ 偵測到手動設定的 DB_* 變數。");
         
@@ -39,7 +40,8 @@ async function connectToDatabase() {
             password: process.env.MYSQL_PASSWORD,
             database: process.env.MYSQL_DATABASE,
             port: process.env.MYSQL_PORT || 3306,
-            charset: 'utf8mb4' // 🌟 修正 2: 強制使用 UTF8MB4 字符集
+            charset: 'utf8mb4',
+            collation: 'utf8mb4_unicode_ci' // 🌟 修正 2: 強制排序規則
         };
         console.log("ℹ️ 偵測到 Zeabur 自動注入的 MYSQL_* 變數。");
         
@@ -58,7 +60,7 @@ async function connectToDatabase() {
             }
             return next();
         };
-
+        
         // 嘗試連線到資料庫
         pool = mysql.createPool(dbConfig);
         console.log('✅ MySQL 資料庫連線池建立成功！');
@@ -79,7 +81,10 @@ async function connectToDatabase() {
         console.log('✅ 資料表 annual_plans 檢查/創建完成。');
         
     } catch (err) {
-        console.error('❌ 資料庫連線或初始化失敗:', err.message);
+        // 強化錯誤輸出，方便最終判斷
+        const safeDbConfig = { ...dbConfig, password: '***REDACTED***' };
+        console.error(`❌ 資料庫連線或初始化失敗: ${err.message}`);
+        console.error(`❌ 連線配置: ${JSON.stringify(safeDbConfig)}`);
         // 發生錯誤時，將 pool 設為 null，以防止 API 嘗試使用錯誤的連線
         pool = null; 
     }
