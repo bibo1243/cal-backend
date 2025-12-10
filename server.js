@@ -14,8 +14,8 @@ let pool;
 async function connectToDatabase() {
     let dbConfig = {};
     
-    // 優先檢查手動設定的 DB_ 變數
-    if (process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASS && process.env.DB_NAME) {
+    // 檢查環境變數 (優先順序：手動 DB_ > Zeabur MYSQL_)
+    if (process.env.DB_HOST) {
         dbConfig = {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
@@ -25,10 +25,7 @@ async function connectToDatabase() {
             charset: 'UTF8MB4_GENERAL_CI',
             timezone: '+08:00'
         };
-        console.log("ℹ️ 偵測到手動設定的 DB_* 變數。");
-    } 
-    // 其次檢查 Zeabur 自動注入的 MYSQL_ 變數
-    else if (process.env.MYSQL_HOST && process.env.MYSQL_USER && process.env.MYSQL_PASSWORD && process.env.MYSQL_DATABASE) {
+    } else if (process.env.MYSQL_HOST) {
         dbConfig = {
             host: process.env.MYSQL_HOST,
             user: process.env.MYSQL_USER,
@@ -38,7 +35,6 @@ async function connectToDatabase() {
             charset: 'UTF8MB4_GENERAL_CI',
             timezone: '+08:00'
         };
-        console.log("ℹ️ 偵測到 Zeabur 自動注入的 MYSQL_* 變數。");
     } else {
         console.error("❌ 警告：未找到任何完整的 MySQL 連線變數。");
         return;
@@ -47,6 +43,7 @@ async function connectToDatabase() {
     try {
         pool = mysql.createPool(dbConfig);
         
+        // 強制設定連線編碼
         const connection = await pool.getConnection();
         await connection.query("SET NAMES 'utf8mb4'");
         await connection.query("SET CHARACTER SET utf8mb4");
@@ -63,6 +60,7 @@ async function connectToDatabase() {
 
 async function createTable() {
     if (!pool) return;
+    // 使用 JSON 欄位來儲存靈活的資料結構 (包含青蛙、關聯、圖片)
     await pool.query(`
         CREATE TABLE IF NOT EXISTS annual_plans (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -74,13 +72,12 @@ async function createTable() {
             UNIQUE KEY unique_year (year)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log('✅ 資料表 annual_plans 檢查/創建完成 (UTF8MB4)。');
+    console.log('✅ 資料表 annual_plans 檢查/創建完成。');
 }
 
 connectToDatabase();
 
-// --- 中介軟體 (提升限制以支援圖片上傳) ---
-// 🌟 修正：將限制提升至 50MB，解決多張圖片導致儲存失敗的問題
+// --- 中介軟體 (50MB 限制) ---
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ limit: '50mb', type: 'application/octet-stream' }));
 app.use(express.static(PUBLIC_DIR));
@@ -89,69 +86,52 @@ app.get('/api/status', (req, res) => {
     res.send({ status: 'ok', message: 'Cal Planner Backend is running.', dbConnected: !!pool });
 });
 
-// --- 徹底重置 API ---
+// --- 清空資料庫 API ---
 app.delete('/api/test/clear-data', async (req, res) => {
     if (!pool) return res.status(503).json({ error: '資料庫離線' });
     try {
         await pool.query(`DROP TABLE IF EXISTS annual_plans;`);
         await createTable();
-        return res.json({ success: true, message: '資料庫已徹底重置。' });
+        return res.json({ success: true, message: '資料庫已重置。' });
     } catch (error) {
-        console.error('重置資料失敗:', error.message);
-        return res.status(500).json({ error: '執行失敗。' });
+        return res.status(500).json({ error: error.message });
     }
 });
 
-// --- 全庫備份與還原 API ---
-// 1. 備份：下載所有年份資料
+// --- 備份與還原 API ---
 app.get('/api/db/backup', async (req, res) => {
     if (!pool) return res.status(503).json({ error: '資料庫離線' });
     try {
         const [rows] = await pool.query('SELECT * FROM annual_plans');
-        // 將資料庫原始資料直接回傳
         res.setHeader('Content-Disposition', 'attachment; filename="database_backup.json"');
-        res.setHeader('Content-Type', 'application/json');
         return res.json(rows);
     } catch (error) {
-        console.error('備份失敗:', error.message);
         return res.status(500).json({ error: '備份失敗' });
     }
 });
 
-// 2. 還原：上傳 JSON 並覆蓋資料庫
 app.post('/api/db/restore', async (req, res) => {
     if (!pool) return res.status(503).json({ error: '資料庫離線' });
-    const backupData = req.body; // 預期是一個陣列
-    
-    if (!Array.isArray(backupData)) {
-        return res.status(400).json({ error: '格式錯誤：備份檔案應為陣列' });
-    }
+    const backupData = req.body;
+    if (!Array.isArray(backupData)) return res.status(400).json({ error: '格式錯誤' });
 
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        
-        // 清空現有表格
         await connection.query('TRUNCATE TABLE annual_plans');
-        
-        // 逐筆插入還原資料
         for (const row of backupData) {
-            // 處理 JSON 欄位可能是字串或物件的情況
             const dataStr = typeof row.data === 'string' ? row.data : JSON.stringify(row.data);
             const bgStr = typeof row.bg_images === 'string' ? row.bg_images : JSON.stringify(row.bg_images);
-            
             await connection.query(
                 `INSERT INTO annual_plans (year, data, theme, bg_images, created_at) VALUES (?, ?, ?, ?, ?)`,
                 [row.year, dataStr, row.theme, bgStr, new Date(row.created_at)]
             );
         }
-        
         await connection.commit();
-        return res.json({ success: true, message: `成功還原 ${backupData.length} 筆年度資料` });
+        return res.json({ success: true });
     } catch (error) {
         await connection.rollback();
-        console.error('還原失敗:', error.message);
-        return res.status(500).json({ error: `還原失敗: ${error.message}` });
+        return res.status(500).json({ error: error.message });
     } finally {
         connection.release();
     }
@@ -165,7 +145,7 @@ function safeParseJson(data) {
     return data; 
 }
 
-// --- 單一年份 CRUD ---
+// --- 年度資料 CRUD ---
 app.get('/api/plan/:year', async (req, res) => {
     if (!pool) return res.status(503).json({ error: '資料庫離線' });
     const year = parseInt(req.params.year);
@@ -174,25 +154,18 @@ app.get('/api/plan/:year', async (req, res) => {
         const [rows] = await pool.query('SELECT data, theme, bg_images FROM annual_plans WHERE year = ?', [year]);
         if (rows.length > 0) {
             const row = rows[0];
-            const parsedData = safeParseJson(row.data);
-            const parsedBgImages = safeParseJson(row.bg_images);
-
-            if (!parsedData || !parsedBgImages) {
-                return res.status(404).json({ message: `資料損毀` });
-            }
-
             return res.json({
                 year: year,
                 theme: row.theme,
-                yearData: parsedData.yearData,
-                monthData: parsedData.monthData,
-                backgroundImages: parsedBgImages
+                yearData: safeParseJson(row.data).yearData, // 確保結構正確
+                monthData: safeParseJson(row.data).monthData,
+                backgroundImages: safeParseJson(row.bg_images)
             });
         } else {
             return res.status(404).json({ message: `無資料` });
         }
     } catch (error) {
-        console.error('讀取失敗:', error.message);
+        console.error("讀取失敗", error);
         return res.status(500).json({ error: '伺服器錯誤' });
     }
 });
@@ -202,8 +175,7 @@ app.post('/api/plan/:year', async (req, res) => {
     const year = parseInt(req.params.year);
     const { yearData, monthData, theme, backgroundImages } = req.body;
     
-    if (!yearData || !monthData) return res.status(400).json({ error: '資料不完整' });
-    
+    // 將 yearData 和 monthData 包裝在一個 JSON 物件中
     const fullData = { yearData, monthData };
     
     try {
@@ -214,7 +186,7 @@ app.post('/api/plan/:year', async (req, res) => {
         );
         return res.json({ success: true });
     } catch (error) {
-        console.error('保存失敗:', error.message);
+        console.error("保存失敗", error);
         return res.status(500).json({ error: '伺服器錯誤' });
     }
 });
