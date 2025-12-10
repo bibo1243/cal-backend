@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>九宮格年度規劃系統 - Cal Planner</title>
-    <!-- 導入 XLSX 庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* CSS 變量定義：8種風格 */
+        /* CSS 變量定義 */
         :root {
             --bg-primary: #f5f8f5; --bg-secondary: #ffffff; --text-primary: #2d4a2b; --text-secondary: #5a7658;
             --accent: #6b9e78; --accent-light: #d8e8db; --accent-dark: #4a7552;
@@ -16,112 +15,87 @@
             --month-badge: #88b894;
         }
         
-        /* 1. 竹林青翠 (Bamboo) */
+        /* 8種風格 */
         body.bamboo { --bg-primary: #f5f8f5; --accent: #6b9e78; --center-bg: linear-gradient(135deg, #6b9e78 0%, #4a7552 100%); }
-        /* 2. 櫻花粉雅 (Sakura) */
-        body.sakura { --bg-primary: #fff0f5; --text-primary: #5d4157; --accent: #ffb7c5; --accent-light: #ffe4e1; --accent-dark: #db7093; --center-bg: linear-gradient(135deg, #ffb7c5 0%, #db7093 100%); }
-        /* 3. 蓮池靜藍 (Lotus) */
-        body.lotus { --bg-primary: #f0f8ff; --text-primary: #2c3e50; --accent: #87ceeb; --accent-light: #e0ffff; --accent-dark: #4682b4; --center-bg: linear-gradient(135deg, #87ceeb 0%, #4682b4 100%); }
-        /* 4. 晚霞橙暖 (Sunset) */
-        body.sunset { --bg-primary: #fff5e6; --text-primary: #5d4037; --accent: #ffab91; --accent-light: #ffe0b2; --accent-dark: #d84315; --center-bg: linear-gradient(135deg, #ffab91 0%, #d84315 100%); }
-        /* 5. 深海湛藍 (Ocean) */
-        body.ocean { --bg-primary: #e3f2fd; --text-primary: #0d47a1; --accent: #2196f3; --accent-light: #bbdefb; --accent-dark: #1565c0; --center-bg: linear-gradient(135deg, #2196f3 0%, #1565c0 100%); }
-        /* 6. 薰衣草紫 (Lavender) */
-        body.lavender { --bg-primary: #f3e5f5; --text-primary: #4a148c; --accent: #ce93d8; --accent-light: #f3e5f5; --accent-dark: #8e24aa; --center-bg: linear-gradient(135deg, #ce93d8 0%, #8e24aa 100%); }
-        /* 7. 秋楓紅葉 (Autumn) */
-        body.autumn { --bg-primary: #fff3e0; --text-primary: #3e2723; --accent: #ffcc80; --accent-light: #ffe0b2; --accent-dark: #e65100; --center-bg: linear-gradient(135deg, #ffcc80 0%, #e65100 100%); }
-        /* 8. 暗夜極光 (Midnight) */
-        body.midnight { --bg-primary: #263238; --bg-secondary: #37474f; --text-primary: #eceff1; --text-secondary: #b0bec5; --accent: #80cbc4; --accent-light: #546e7a; --accent-dark: #009688; --border: #455a64; --shadow: rgba(0,0,0,0.3); --center-bg: linear-gradient(135deg, #263238 0%, #009688 100%); }
+        body.sakura { --bg-primary: #fff0f5; --text-primary: #5d4157; --accent: #ffb7c5; --accent-light: #ffe4e1; --center-bg: linear-gradient(135deg, #ffb7c5 0%, #db7093 100%); }
+        body.lotus { --bg-primary: #f0f8ff; --text-primary: #2c3e50; --accent: #87ceeb; --accent-light: #e0ffff; --center-bg: linear-gradient(135deg, #87ceeb 0%, #4682b4 100%); }
+        body.sunset { --bg-primary: #fff5e6; --text-primary: #5d4037; --accent: #ffab91; --accent-light: #ffe0b2; --center-bg: linear-gradient(135deg, #ffab91 0%, #d84315 100%); }
+        body.ocean { --bg-primary: #e3f2fd; --text-primary: #0d47a1; --accent: #2196f3; --accent-light: #bbdefb; --center-bg: linear-gradient(135deg, #2196f3 0%, #1565c0 100%); }
+        body.lavender { --bg-primary: #f3e5f5; --text-primary: #4a148c; --accent: #ce93d8; --accent-light: #f3e5f5; --center-bg: linear-gradient(135deg, #ce93d8 0%, #8e24aa 100%); }
+        body.autumn { --bg-primary: #fff3e0; --text-primary: #3e2723; --accent: #ffcc80; --accent-light: #ffe0b2; --center-bg: linear-gradient(135deg, #ffcc80 0%, #e65100 100%); }
+        body.midnight { --bg-primary: #263238; --bg-secondary: #37474f; --text-primary: #eceff1; --text-secondary: #b0bec5; --accent: #80cbc4; --accent-light: #546e7a; --border: #455a64; --center-bg: linear-gradient(135deg, #263238 0%, #009688 100%); }
 
-        body { 
-            font-family: system-ui, -apple-system, sans-serif;
-            background: var(--bg-primary); color: var(--text-primary); 
-            line-height: 1.6; min-height: 100vh; padding: 30px 20px; 
-            transition: all 0.5s ease; 
-        }
-        
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; padding: 30px 20px; transition: all 0.5s ease; }
         .container { max-width: 1400px; margin: 0 auto; }
         header { text-align: center; margin-bottom: 30px; }
         h1 { font-size: 2.5rem; margin-bottom: 10px; }
-        .subtitle { opacity: 0.8; }
         
-        /* 按鈕與控制區 */
         .controls-wrapper { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        
         .btn { padding: 8px 16px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; border-radius: 20px; transition: 0.2s; font-size: 0.9rem; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-        .btn-danger { background: #e74c3c !important; color: white !important; border-color: #c0392b !important; }
         .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-danger { background: #e74c3c !important; color: white !important; border-color: #c0392b !important; }
 
-        /* 主題選擇器 - 色票圓點 */
-        .theme-selector { display: flex; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 30px; box-shadow: 0 2px 10px var(--shadow); align-items: center; }
+        /* 風格色票 */
+        .theme-selector { display: flex; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 30px; box-shadow: 0 2px 10px var(--shadow); }
         .theme-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s; position: relative; }
         .theme-dot:hover { transform: scale(1.2); }
-        .theme-dot.active { border-color: var(--text-primary); transform: scale(1.1); }
-        .theme-dot::after { /* Tooltip */
-            content: attr(data-title); position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; font-size: 10px; border-radius: 4px;
-            white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s;
-        }
+        .theme-dot::after { content: attr(data-title); position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; font-size: 10px; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
         .theme-dot:hover::after { opacity: 1; }
 
-        /* 九宮格 */
+        /* 九宮格與格子 */
         .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
-        .grid-item { 
-            background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 16px; 
-            padding: 20px; min-height: 350px; 
-            display: flex; flex-direction: column; /* 垂直排列 */
-            box-shadow: 0 4px 15px var(--shadow); transition: 0.3s;
-        }
-        .grid-item:hover { border-color: var(--accent); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+        .grid-item { background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 16px; padding: 20px; min-height: 350px; display: flex; flex-direction: column; box-shadow: 0 4px 15px var(--shadow); transition: 0.3s; position: relative; }
+        .grid-item:hover { border-color: var(--accent); }
         .grid-item.center { background: var(--center-bg); border: none; color: white; justify-content: center; align-items: center; }
-
         .grid-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 10px; border-bottom: 2px solid var(--border); padding-bottom: 5px; }
         .grid-item.center .grid-title { border: none; color: white; }
 
-        /* 目標列表區域 (佔滿剩餘空間) */
+        /* 目標列表 */
         .goals-list { flex: 1; list-style: none; padding: 0; overflow-y: auto; margin-bottom: 15px; max-height: 200px; }
-        
-        .goal-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); align-items: flex-start; }
-        .goal-item:last-child { border-bottom: none; }
+        .goal-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); align-items: flex-start; flex-wrap: wrap; }
+        .goal-header { display: flex; width: 100%; align-items: flex-start; gap: 8px; }
         .goal-number { min-width: 20px; height: 20px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-top: 3px; }
-        .goal-text { flex: 1; word-break: break-word; cursor: pointer; }
-        .goal-checkbox { width: 16px; height: 16px; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; margin-top: 4px; }
+        .goal-checkbox { width: 16px; height: 16px; border: 2px solid var(--accent); border-radius: 4px; cursor: pointer; margin-top: 4px; flex-shrink: 0; }
         .goal-checkbox.checked { background: var(--accent); }
         
-        /* 底部操作區 (輸入框 + 圖片) */
+        .goal-text-wrapper { flex: 1; min-width: 0; }
+        .goal-text { word-break: break-word; cursor: pointer; }
+        .goal-frog-icon { display: inline-block; animation: hop 1s infinite; margin-right: 5px; font-size: 1.1em; }
+        @keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+        /* 關聯顯示 */
+        .linked-goal-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; margin-left: 28px; background: rgba(0,0,0,0.03); padding: 2px 6px; border-radius: 4px; width: 100%; }
+
+        /* 按鈕區 */
+        .action-btns { display: flex; gap: 4px; margin-left: auto; }
+        .mini-btn { padding: 2px 6px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text-secondary); }
+        .mini-btn:hover { background: var(--accent-light); color: var(--accent-dark); }
+        .btn-frog.active { background: #d4edda; border-color: #28a745; color: #28a745; }
+
+        /* 底部操作區 */
         .grid-footer { margin-top: auto; }
-        
         .add-input-wrapper { display: flex; gap: 5px; margin-bottom: 10px; }
         .add-input { flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); }
         .add-btn { padding: 8px 12px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; }
 
-        /* 圖片顯示區 - 移至最下方 */
-        .image-display-area { 
-            width: 100%; 
-            aspect-ratio: 1 / 1; /* 改成方形 */
-            border: 2px dashed var(--border); border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; 
-            overflow: hidden; position: relative; margin-top: 5px;
-            background: rgba(0,0,0,0.02); cursor: pointer;
-            transition: all 0.3s;
-        }
+        /* 圖片區 (正方形, 下方) */
+        .image-display-area { width: 100%; aspect-ratio: 1 / 1; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; margin-top: 5px; background: rgba(0,0,0,0.02); cursor: pointer; }
         .image-display-area:hover { background: rgba(0,0,0,0.05); border-color: var(--accent); }
         .image-display-area img { width: 100%; height: 100%; display: block; object-fit: contain; }
         .image-placeholder { color: var(--text-secondary); font-size: 0.8rem; pointer-events: none; }
-        
-        /* 圖片控制按鈕 (懸浮在圖片區上方) */
-        .img-controls { 
-            position: absolute; bottom: 5px; right: 5px; display: flex; gap: 5px; opacity: 0; transition: 0.3s; 
-        }
+        .img-controls { position: absolute; bottom: 5px; right: 5px; display: flex; gap: 5px; opacity: 0; transition: 0.3s; }
         .image-display-area:hover .img-controls { opacity: 1; }
-        .mini-btn { padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; color: white; }
+
+        /* 關聯選擇 Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--bg-secondary); padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .modal-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; color: var(--accent); }
+        .link-option { padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
+        .link-option:hover { background: var(--accent-light); }
         
-        /* 核心詞大字 */
         .core-word-display { font-size: 4rem; font-weight: bold; background: transparent; border: 2px solid rgba(255,255,255,0.3); color: white; text-align: center; width: 100%; max-width: 200px; padding: 10px; }
 
-        /* 響應式 */
         @media (max-width: 900px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } }
     </style>
@@ -133,9 +107,7 @@
             <div class="controls-wrapper">
                 <button class="btn active" onclick="switchPage('planner')">📋 規劃</button>
                 <button class="btn" onclick="switchPage('stats')">📊 統計</button>
-                
                 <select id="yearSelect" class="btn" style="padding: 8px;"></select>
-                
                 <div class="theme-selector">
                     <div class="theme-dot" style="background:#6b9e78" data-theme="bamboo" data-title="竹林"></div>
                     <div class="theme-dot" style="background:#ffb7c5" data-theme="sakura" data-title="櫻花"></div>
@@ -147,10 +119,9 @@
                     <div class="theme-dot" style="background:#263238" data-theme="midnight" data-title="暗夜"></div>
                 </div>
             </div>
-            
             <div class="controls-wrapper">
-                <button class="btn btn-primary" onclick="handleBackup()">📥 備份資料庫</button>
-                <button class="btn btn-primary" onclick="document.getElementById('restoreInput').click()">📤 還原資料庫</button>
+                <button class="btn btn-primary" onclick="handleBackup()">📥 備份</button>
+                <button class="btn btn-primary" onclick="document.getElementById('restoreInput').click()">📤 還原</button>
                 <input type="file" id="restoreInput" accept=".json" style="display:none" onchange="handleRestore(this)">
                 <button class="btn btn-danger" onclick="handleClearData()">⚠️ 清空資料</button>
             </div>
@@ -162,17 +133,25 @@
                 <button class="btn mode-btn" data-mode="month" onclick="switchMode('month')">📆 月度</button>
             </div>
             <div id="monthSelector" class="controls-wrapper" style="display:none;">
-                <!-- JS 生成月份按鈕 -->
+                <!-- 月份按鈕 JS 生成 -->
             </div>
             <div id="gridContainer" class="grid-container"></div>
         </div>
 
         <div id="statsPage" style="display:none;">
-            <!-- 統計內容由 JS 動態生成 -->
             <div class="grid-item" style="width: 100%; text-align: center;">
                 <h2>完成進度</h2>
                 <div id="statsContent"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- 關聯選擇 Modal -->
+    <div id="linkModal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <div class="modal-title">選擇要關聯的年度目標</div>
+            <div id="linkOptionsList"></div>
+            <button class="btn" style="margin-top:15px; float:right;" onclick="document.getElementById('linkModal').style.display='none'">取消</button>
         </div>
     </div>
 
@@ -186,10 +165,9 @@
         let currentMode = 'year';
         let currentMonth = new Date().getMonth() + 1;
         let currentYear = new Date().getFullYear();
-        let currentTheme = 'bamboo';
         let allYearsData = {}; 
+        let pendingLink = null; // 暫存正在設定關聯的目標資訊
 
-        // 初始化
         async function initApp() {
             initYearSelector();
             initMonthSelector();
@@ -198,23 +176,15 @@
             renderGrid();
         }
 
-        // 年份選擇器 (至2100年)
         function initYearSelector() {
             const select = document.getElementById('yearSelect');
-            const startYear = 2020;
-            const endYear = 2100;
-            for (let y = startYear; y <= endYear; y++) {
+            for (let y = 2020; y <= 2100; y++) {
                 const opt = document.createElement('option');
-                opt.value = y;
-                opt.textContent = `${y}年`;
+                opt.value = y; opt.textContent = `${y}年`;
                 if (y === currentYear) opt.selected = true;
                 select.appendChild(opt);
             }
-            select.onchange = async (e) => {
-                currentYear = parseInt(e.target.value);
-                await loadData();
-                renderGrid();
-            };
+            select.onchange = async (e) => { currentYear = parseInt(e.target.value); await loadData(); renderGrid(); };
         }
 
         function initMonthSelector() {
@@ -237,25 +207,16 @@
             document.querySelectorAll('.theme-dot').forEach(dot => {
                 dot.onclick = () => {
                     const theme = dot.dataset.theme;
-                    currentTheme = theme;
                     document.body.className = theme;
-                    if(allYearsData[currentYear]) {
-                        allYearsData[currentYear].theme = theme;
-                        saveData();
-                    }
+                    if(allYearsData[currentYear]) { allYearsData[currentYear].theme = theme; saveData(); }
                 };
             });
         }
 
-        // 資料結構初始化
         function initDataStructure(year) {
             if (allYearsData[year]) return;
-            const yearData = {};
-            const monthData = {};
-            const backgroundImages = { year: {}, month: {} };
-            GRID_CONFIG.forEach(c => {
-                yearData[c.id] = { title: c.title, coreWord: '', goals: [] };
-            });
+            const yearData = {}; const monthData = {}; const backgroundImages = { year: {}, month: {} };
+            GRID_CONFIG.forEach(c => { yearData[c.id] = { title: c.title, coreWord: '', goals: [] }; });
             for(let m=1; m<=12; m++) {
                 monthData[m] = {};
                 GRID_CONFIG.forEach(c => { monthData[m][c.id] = { goals: [] }; });
@@ -264,102 +225,46 @@
             allYearsData[year] = { yearData, monthData, theme: 'bamboo', backgroundImages };
         }
 
-        // 資料載入 (API)
         async function loadData() {
             try {
                 const res = await fetch(`/api/plan/${currentYear}`);
-                if (res.status === 404) {
-                    initDataStructure(currentYear);
-                } else {
+                if (res.status === 404) { initDataStructure(currentYear); } 
+                else {
                     const data = await res.json();
                     allYearsData[currentYear] = data;
-                    currentTheme = data.theme || 'bamboo';
-                    document.body.className = currentTheme;
+                    document.body.className = data.theme || 'bamboo';
                 }
-            } catch (e) {
-                console.error('載入失敗', e);
-                initDataStructure(currentYear);
-            }
+            } catch (e) { initDataStructure(currentYear); }
         }
 
-        // 資料儲存 (API)
         function saveData() {
-            const data = allYearsData[currentYear];
             fetch(`/api/plan/${currentYear}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(allYearsData[currentYear])
             }).catch(e => console.error('儲存失敗', e));
         }
 
-        // 圖片壓縮函式 (最大寬度 800px, 品質 0.7)
-        function compressImage(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        
-                        // 計算壓縮後尺寸
-                        const maxWidth = 800; 
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        if (width > maxWidth) {
-                            height *= maxWidth / width;
-                            width = maxWidth;
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // 輸出壓縮後的 Base64 (JPEG 格式, 0.7 品質)
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                        resolve(dataUrl);
-                    };
-                    img.onerror = (error) => reject(error);
-                };
-                reader.onerror = (error) => reject(error);
-            });
-        }
-
-        // 渲染主網格
         function renderGrid() {
             const container = document.getElementById('gridContainer');
             container.innerHTML = '';
-            
             GRID_CONFIG.forEach(config => {
                 const item = document.createElement('div');
                 item.className = `grid-item ${config.isCenter ? 'center' : ''}`;
-                
-                if (config.isCenter) {
-                    renderCenterCell(item, config);
-                } else {
-                    renderNormalCell(item, config);
-                }
+                if (config.isCenter) renderCenterCell(item, config);
+                else renderNormalCell(item, config);
                 container.appendChild(item);
             });
         }
 
         function renderCenterCell(item, config) {
             const data = allYearsData[currentYear].yearData[config.id];
-            const word = data.coreWord || '';
-            
-            item.innerHTML = `
-                <div class="grid-title">${config.title}</div>
-                <input type="text" class="core-word-display" value="${word}" 
-                    oninput="updateCoreWord(this.value)" placeholder="核心詞">
-            `;
+            item.innerHTML = `<div class="grid-title">${config.title}</div>
+                <input type="text" class="core-word-display" value="${data.coreWord||''}" oninput="updateCoreWord(this.value)" placeholder="核心詞">`;
         }
 
         function updateCoreWord(val) {
-            allYearsData[currentYear].yearData['core'].coreWord = val;
-            saveData();
+            allYearsData[currentYear].yearData['core'].coreWord = val; saveData();
         }
 
         function renderNormalCell(item, config) {
@@ -368,63 +273,74 @@
             const bgImages = allYearsData[currentYear].backgroundImages;
             const imgSrc = isYear ? bgImages.year[config.id] : (bgImages.month[currentMonth][config.id] || bgImages.year[config.id]);
 
-            // 目標列表 HTML
-            const goalsHtml = data.goals.map((g, idx) => `
+            const goalsHtml = data.goals.map((g, idx) => {
+                // 產生關聯資訊文字
+                let linkText = '';
+                if (!isYear && g.yearGoalId) {
+                    const yearGoals = allYearsData[currentYear].yearData[config.id].goals;
+                    const linkedGoal = yearGoals.find(yg => yg.id === g.yearGoalId);
+                    if (linkedGoal) linkText = `<div class="linked-goal-info">↳ 關聯：${linkedGoal.text}</div>`;
+                }
+
+                // 產生青蛙圖示
+                const frogIcon = g.hasFrog ? '<span class="goal-frog-icon">🐸</span>' : '';
+
+                return `
                 <li class="goal-item">
-                    <div class="goal-number">${idx+1}</div>
-                    <div class="goal-checkbox ${g.completed?'checked':''}" onclick="toggleGoal('${config.id}', ${idx})"></div>
-                    <div class="goal-text" contenteditable="true" onblur="updateGoal('${config.id}', ${idx}, this.innerText)">${g.text}</div>
-                    <button class="mini-btn" style="color:#aaa" onclick="deleteGoal('${config.id}', ${idx})">×</button>
-                </li>
-            `).join('');
+                    <div class="goal-header">
+                        <div class="goal-number">${idx+1}</div>
+                        <div class="goal-checkbox ${g.completed?'checked':''}" onclick="toggleGoal('${config.id}', ${idx})"></div>
+                        <div class="goal-text-wrapper">
+                            <div class="goal-text" contenteditable="true" onblur="updateGoal('${config.id}', ${idx}, this.innerText)">${frogIcon}${g.text}</div>
+                            ${linkText}
+                        </div>
+                        <div class="action-btns">
+                            <button class="mini-btn btn-frog ${g.hasFrog?'active':''}" onclick="toggleFrog('${config.id}', ${idx})" title="標記重點">🐸</button>
+                            ${!isYear ? `<button class="mini-btn" onclick="openLinkModal('${config.id}', ${idx})" title="關聯年度目標">🔗</button>` : ''}
+                            <button class="mini-btn" onclick="deleteGoal('${config.id}', ${idx})">×</button>
+                        </div>
+                    </div>
+                </li>`;
+            }).join('');
 
             item.innerHTML = `
                 <div class="grid-title">${config.title}</div>
                 <ul class="goals-list">${goalsHtml}</ul>
-                
                 <div class="grid-footer">
                     <div class="add-input-wrapper">
                         <input type="text" class="add-input" placeholder="新增目標..." onkeypress="if(event.key==='Enter') addGoal('${config.id}', this)">
                         <button class="add-btn" onclick="addGoal('${config.id}', this.previousElementSibling)">+</button>
                     </div>
-                    
-                    <!-- 圖片上傳區塊：點擊觸發上傳 -->
                     <div class="image-display-area" onclick="triggerFileUpload('${config.id}')">
                         ${imgSrc ? `<img src="${imgSrc}">` : `<span class="image-placeholder">點擊上傳圖片</span>`}
                         <div class="img-controls">
-                            <button class="mini-btn" style="background:#2196f3" onclick="event.stopPropagation();triggerFileUpload('${config.id}')">更換</button>
-                            ${imgSrc ? `<button class="mini-btn" style="background:#f44336" onclick="event.stopPropagation();removeImage('${config.id}')">刪除</button>` : ''}
+                            <button class="mini-btn" style="background:#2196f3;color:white" onclick="event.stopPropagation();triggerFileUpload('${config.id}')">更換</button>
+                            ${imgSrc ? `<button class="mini-btn" style="background:#f44336;color:white" onclick="event.stopPropagation();removeImage('${config.id}')">刪除</button>` : ''}
                         </div>
                     </div>
                     <input type="file" id="file-${config.id}" style="display:none" accept="image/*" onchange="uploadImage('${config.id}', this)">
-                </div>
-            `;
+                </div>`;
         }
 
-        // 觸發檔案上傳
-        function triggerFileUpload(gridId) {
-            const fileInput = document.getElementById(`file-${gridId}`);
-            fileInput.click();
-        }
-
-        // 邏輯功能
+        // --- 邏輯功能 ---
         function addGoal(gridId, input) {
             if(!input.value.trim()) return;
             const isYear = currentMode === 'year';
             const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
             
-            targetData.goals.push({ text: input.value, completed: false });
+            // 產生唯一 ID 以供關聯使用
+            const newId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            targetData.goals.push({ id: newId, text: input.value, completed: false, hasFrog: false, yearGoalId: null });
+            
             input.value = '';
-            saveData();
-            renderGrid();
+            saveData(); renderGrid();
         }
 
         function toggleGoal(gridId, idx) {
             const isYear = currentMode === 'year';
             const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
             targetData.goals[idx].completed = !targetData.goals[idx].completed;
-            saveData();
-            renderGrid();
+            saveData(); renderGrid();
         }
 
         function updateGoal(gridId, idx, text) {
@@ -439,45 +355,92 @@
             const isYear = currentMode === 'year';
             const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
             targetData.goals.splice(idx, 1);
-            saveData();
-            renderGrid();
+            saveData(); renderGrid();
         }
 
+        // 青蛙功能
+        function toggleFrog(gridId, idx) {
+            const isYear = currentMode === 'year';
+            const targetData = isYear ? allYearsData[currentYear].yearData[gridId] : allYearsData[currentYear].monthData[currentMonth][gridId];
+            targetData.goals[idx].hasFrog = !targetData.goals[idx].hasFrog;
+            saveData(); renderGrid();
+        }
+
+        // 關聯功能
+        function openLinkModal(gridId, idx) {
+            pendingLink = { gridId, idx };
+            const modal = document.getElementById('linkModal');
+            const list = document.getElementById('linkOptionsList');
+            const yearGoals = allYearsData[currentYear].yearData[gridId].goals;
+            
+            let html = `<div class="link-option" onclick="setLink(null)">[無關聯]</div>`;
+            yearGoals.forEach(g => {
+                html += `<div class="link-option" onclick="setLink('${g.id}')">${g.text}</div>`;
+            });
+            list.innerHTML = html;
+            modal.style.display = 'flex';
+        }
+
+        function setLink(yearGoalId) {
+            if (pendingLink) {
+                const { gridId, idx } = pendingLink;
+                allYearsData[currentYear].monthData[currentMonth][gridId].goals[idx].yearGoalId = yearGoalId;
+                saveData(); renderGrid();
+            }
+            document.getElementById('linkModal').style.display = 'none';
+            pendingLink = null;
+        }
+
+        function closeModal(e) {
+            if (e.target.id === 'linkModal') {
+                document.getElementById('linkModal').style.display = 'none';
+            }
+        }
+
+        // 圖片上傳 (維持原邏輯)
+        function triggerFileUpload(gridId) { document.getElementById(`file-${gridId}`).click(); }
+        
         async function uploadImage(gridId, input) {
             const file = input.files[0];
             if (!file) return;
-
             try {
-                // 先進行圖片壓縮 (小於 800px)
                 const resizedImage = await compressImage(file);
-                
                 const bgImages = allYearsData[currentYear].backgroundImages;
-                if (currentMode === 'year') {
-                    bgImages.year[gridId] = resizedImage;
-                } else {
-                    bgImages.month[currentMonth][gridId] = resizedImage;
-                }
-                
-                saveData();
-                renderGrid();
-            } catch (error) {
-                console.error("圖片處理失敗", error);
-                alert("圖片處理失敗，請重試");
-            } finally {
-                // 關鍵修復：清空 input value，確保重複上傳或刪除後再上傳能觸發 onchange
-                input.value = '';
-            }
+                if (currentMode === 'year') bgImages.year[gridId] = resizedImage;
+                else bgImages.month[currentMonth][gridId] = resizedImage;
+                saveData(); renderGrid();
+            } catch (error) { alert("上傳失敗"); }
+            finally { input.value = ''; }
         }
 
         function removeImage(gridId) {
             const bgImages = allYearsData[currentYear].backgroundImages;
-            if(currentMode === 'year') {
-                delete bgImages.year[gridId];
-            } else {
-                delete bgImages.month[currentMonth][gridId];
-            }
-            saveData();
-            renderGrid();
+            if(currentMode === 'year') delete bgImages.year[gridId];
+            else delete bgImages.month[currentMonth][gridId];
+            saveData(); renderGrid();
+        }
+
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxWidth = 800; 
+                        let w = img.width; let h = img.height;
+                        if (w > maxWidth) { h *= maxWidth / w; w = maxWidth; }
+                        canvas.width = w; canvas.height = h;
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
         }
 
         function switchMode(mode) {
@@ -495,9 +458,7 @@
         }
 
         function updateStats() {
-            // 簡易統計顯示
             let total = 0, done = 0;
-            // 統計年度
             Object.values(allYearsData[currentYear].yearData).forEach(g => {
                 if(g.goals) {
                     total += g.goals.length;
@@ -505,46 +466,25 @@
                 }
             });
             const percent = total === 0 ? 0 : Math.round((done/total)*100);
-            document.getElementById('statsContent').innerHTML = `
-                <div style="font-size:3rem; color:var(--accent); font-weight:bold;">${percent}%</div>
-                <div>年度目標：完成 ${done} / ${total}</div>
-            `;
+            document.getElementById('statsContent').innerHTML = `<div style="font-size:3rem; color:var(--accent); font-weight:bold;">${percent}%</div><div>年度目標：完成 ${done} / ${total}</div>`;
         }
 
-        // --- 資料庫操作 ---
-        async function handleBackup() {
-            window.location.href = '/api/db/backup';
-        }
-
+        // 資料庫操作
+        async function handleBackup() { window.location.href = '/api/db/backup'; }
         async function handleRestore(input) {
-            const file = input.files[0];
-            if(!file) return;
-            
+            const file = input.files[0]; if(!file) return;
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
                     const json = JSON.parse(e.target.result);
-                    const res = await fetch('/api/db/restore', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(json)
-                    });
-                    const result = await res.json();
-                    if(result.success) {
-                        alert('還原成功！頁面將重新整理。');
-                        window.location.reload();
-                    } else {
-                        alert('還原失敗：' + result.error);
-                    }
-                } catch (err) {
-                    alert('檔案格式錯誤');
-                }
+                    await fetch('/api/db/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json) });
+                    window.location.reload();
+                } catch (err) { alert('還原失敗'); }
             };
             reader.readAsText(file);
         }
-
         async function handleClearData() {
-            if(!confirm('確定清空所有資料庫內容？此操作無法復原！')) return;
+            if(!confirm('確定清空所有資料？')) return;
             await fetch('/api/test/clear-data', { method: 'DELETE' });
             window.location.reload();
         }
