@@ -13,12 +13,13 @@ const NOTION_API_KEY = '你的_NOTION_SECRET_KEY_貼在這裡';
 const NOTION_DATABASE_ID = '你的_DATABASE_ID_貼在這裡';
 
 // ==========================================
-// 系統資訊與更新日誌 (需求 2)
+// 系統資訊與更新日誌
 // ==========================================
 const APP_INFO = {
-    version: '1.1.0',
+    version: '1.1.1',
     lastUpdated: '2023-10-27',
     changelog: [
+        { date: '2023-10-27', content: '修復：修正 server.js 中的語法錯誤 (SyntaxError)' },
         { date: '2023-10-27', content: '新增：版本號與更新日誌顯示功能' },
         { date: '2023-10-27', content: '修復：關聯計畫 (Relation) 無法顯示的問題' },
         { date: '2023-10-26', content: '新增：基礎任務增刪改查功能' }
@@ -59,7 +60,6 @@ app.get('/api/tasks', async (req, res) => {
                 title: page.properties.Name.title[0]?.plain_text || '無標題',
                 status: page.properties.Status.select?.name || page.properties.Status.status?.name || 'To Do',
                 date: page.properties.Date.date?.start || '無日期',
-                // 回傳是否有關聯，以及關聯的 ID (Notion API 預設不回傳關聯頁面的標題，只回傳 ID)
                 relationCount: relations.length,
                 relationId: hasRelation ? relations[0].id : null
             };
@@ -67,7 +67,7 @@ app.get('/api/tasks', async (req, res) => {
 
         res.json(tasks);
     } catch (error) {
-        console.error('讀取失敗:', error.body || error); // 顯示更詳細錯誤
+        console.error('讀取失敗:', error.body || error);
         res.status(500).json({ error: '無法讀取 Notion 資料' });
     }
 });
@@ -122,7 +122,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
     }
 });
 
-// 5. 取得系統資訊 API (供前端使用)
+// 5. 取得系統資訊 API
 app.get('/api/info', (req, res) => {
     res.json(APP_INFO);
 });
@@ -131,7 +131,6 @@ app.get('/api/info', (req, res) => {
 // FRONTEND
 // ==========================================
 app.get('/', (req, res) => {
-    // 將 APP_INFO 直接注入到 HTML 中，方便渲染
     const infoScript = `const SERVER_INFO = ${JSON.stringify(APP_INFO)};`;
 
     res.send(`
@@ -143,50 +142,33 @@ app.get('/', (req, res) => {
         <title>Notion 任務管理器 v${APP_INFO.version}</title>
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background-color: #f7f7f7; display: flex; gap: 20px; }
-            
-            /* Layout */
             .main-content { flex: 3; }
             .sidebar { flex: 1; }
-
             h1 { color: #37352f; }
             .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-            
-            /* Form Elements */
             input, select, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
             button { background-color: #000; color: white; cursor: pointer; border: none; font-weight: bold; }
             button:hover { background-color: #333; }
-            
-            /* Task Item */
             .task-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
             .task-info { flex-grow: 1; }
             .task-title { font-weight: bold; font-size: 1.1em; }
             .task-meta { font-size: 0.9em; color: #666; margin-top: 4px; }
             .task-actions { display: flex; gap: 10px; align-items: center; }
-            
-            /* Status Badges */
             .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; margin-right: 10px; }
             .status-todo { background: #ffe2dd; color: #d44c47; }
             .status-inprogress { background: #fdecc8; color: #d9730d; }
             .status-done { background: #dbeddb; color: #2eaadc; }
-            
-            /* Relation Badge */
             .relation-badge { background: #e3e2e0; color: #505558; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 5px; }
-
             .btn-sm { width: auto; padding: 5px 10px; font-size: 0.8em; }
             .btn-delete { background-color: #ff4d4f; }
-
-            /* Changelog Styles */
             .version-tag { background: #2383e2; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; vertical-align: middle; }
             .changelog-item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
             .changelog-date { color: #888; font-size: 0.8em; margin-bottom: 2px; }
         </style>
     </head>
     <body>
-        
-        <!-- 左側主內容 -->
         <div class="main-content">
             <h1>📝 Notion 任務管理器 <span class="version-tag">v${APP_INFO.version}</span></h1>
-            
             <div class="card">
                 <h3>新增任務</h3>
                 <input type="text" id="newTitle" placeholder="任務名稱" required>
@@ -198,26 +180,21 @@ app.get('/', (req, res) => {
                 </select>
                 <button onclick="addTask()">新增至 Notion</button>
             </div>
-
             <div class="card">
                 <h3>任務列表</h3>
                 <div id="taskList">載入中...</div>
             </div>
         </div>
-
-        <!-- 右側側邊欄 (系統資訊) -->
         <div class="sidebar">
             <div class="card">
                 <h3>🚀 版本資訊</h3>
                 <p>目前版本：<strong>v${APP_INFO.version}</strong></p>
                 <p>更新時間：${APP_INFO.lastUpdated}</p>
             </div>
-
             <div class="card">
                 <h3>📅 更新日誌</h3>
                 <div id="changelogList"></div>
             </div>
-            
             <div class="card">
                 <h3>💡 提示</h3>
                 <p style="font-size: 0.9em; color: #666;">
@@ -225,12 +202,10 @@ app.get('/', (req, res) => {
                 </p>
             </div>
         </div>
-
         <script>
-            ${infoScript} // 注入後端設定的資訊
+            ${infoScript}
             const API_URL = 'http://localhost:3000/api/tasks';
 
-            // 渲染更新日誌
             function renderChangelog() {
                 const list = document.getElementById('changelogList');
                 SERVER_INFO.changelog.forEach(log => {
@@ -243,7 +218,6 @@ app.get('/', (req, res) => {
                 });
             }
 
-            // 1. 載入任務
             async function loadTasks() {
                 const list = document.getElementById('taskList');
                 list.innerHTML = '載入中...';
@@ -260,7 +234,6 @@ app.get('/', (req, res) => {
                         if(task.status === 'In Progress') statusClass = 'status-inprogress';
                         if(task.status === 'Done') statusClass = 'status-done';
 
-                        // 判斷是否顯示關聯標籤
                         const relationHtml = task.relationCount > 0 
                             ? \`<span class="relation-badge">🔗 已關聯 \${task.relationCount} 個計畫</span>\` 
                             : '';
@@ -290,7 +263,6 @@ app.get('/', (req, res) => {
                 }
             }
 
-            // 2. 新增任務 (維持不變)
             async function addTask() {
                 const title = document.getElementById('newTitle').value;
                 const date = document.getElementById('newDate').value;
@@ -308,7 +280,6 @@ app.get('/', (req, res) => {
                 loadTasks();
             }
 
-            // 3. 更新狀態 (維持不變)
             async function updateStatus(id, newStatus) {
                 await fetch(\`\${API_URL}/\${id}\`, {
                     method: 'PATCH',
@@ -318,7 +289,6 @@ app.get('/', (req, res) => {
                 loadTasks();
             }
 
-            // 4. 刪除任務 (維持不變)
             async function deleteTask(id) {
                 if(!confirm('確定要刪除嗎？')) return;
                 await fetch(\`\${API_URL}/\${id}\`, {
@@ -327,7 +297,6 @@ app.get('/', (req, res) => {
                 loadTasks();
             }
 
-            // 初始化
             renderChangelog();
             loadTasks();
         </script>
@@ -337,6 +306,6 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(\`伺服器已啟動: http://localhost:\${PORT}\`);
-    console.log(\`版本: \${APP_INFO.version}\`);
+    console.log(`伺服器已啟動: http://localhost:${PORT}`);
+    console.log(`版本: ${APP_INFO.version}`);
 });
